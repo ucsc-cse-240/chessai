@@ -46,6 +46,7 @@ class GameInfo(edq.util.serial.DictConverter):
             white_player: str | None = None,
             black_player: str | None = None,
             extra_info: dict[str, typing.Any] | None = None,
+            wait_for_user: bool = False,
             ) -> None:
         if (seed is None):
             seed = random.randint(0, 2**64)
@@ -133,6 +134,9 @@ class GameInfo(edq.util.serial.DictConverter):
 
         self.extra_info: dict[str, typing.Any] = extra_info
         """ Any additional arguments passed to the game. """
+
+        self.wait_for_user: bool = wait_for_user
+        """ Pause the game between each move until the user is ready. """
 
 class GameResult(edq.util.serial.DictConverter):
     """ The result of running a game. """
@@ -419,6 +423,9 @@ class Game(abc.ABC):
         Make any last adjustments to the game result after the game is over.
         """
 
+    def _wait_for_user(self) -> None:
+        input("Press Enter to resume the game...")
+
     def run(self, ui: chessai.core.ui.UI) -> GameResult:
         """
         The main "game loop" for all games.
@@ -442,8 +449,6 @@ class Game(abc.ABC):
         state.seed = game_id
         state.game_start()
 
-        # board_highlights: list[chessai.core.board.Highlight] = []
-
         # Notify agents about the start of the game.
         records = isolator.game_start(rng, state, self.game_info.agent_start_timeout)
         for record in records.values():
@@ -455,9 +460,6 @@ class Game(abc.ABC):
                 result.crash_agent_teams.append(record.player)
                 state.process_agent_crash(record.player)
                 result.termination_reason = chessai.core.types.TerminationReason.AGENT_CRASHED
-            else:
-                continue
-                # board_highlights += record.get_board_highlights()
 
         state.agents_game_start(records)
 
@@ -466,6 +468,9 @@ class Game(abc.ABC):
 
         while (not self.check_end(state)):
             logging.trace("Turn %d, agent %s.", state.fullmove_number, state.turn) # type: ignore[attr-defined]  # pylint: disable=no-member
+
+            if (self.game_info.wait_for_user):
+                self._wait_for_user()
 
             if (len(self.initial_actions) > 0):
                 # Get the action from the pre-loaded actions.
@@ -601,6 +606,10 @@ def set_cli_args(parser: argparse.ArgumentParser, default_board: str | None = No
                     + ' It may also be the full path to a game, or just a filename.'
                     + ' If just a filename, than the `chessai/resources/games` directory will be checked (using a ".pgn" extension.'))
 
+    parser.add_argument('--wait-for-input', dest = 'wait_for_user',
+            action = 'store_true',
+            help = ('Pause the game between each move until the user resumes the game.'))
+
     return parser
 
 def init_from_args(
@@ -683,6 +692,7 @@ def init_from_args(
             game_round = str(i),
             white_player = white_player,
             black_player = black_player,
+            wait_for_user = args.wait_for_user,
         )
 
         # Suffix the save path if there is more than one game.
