@@ -497,7 +497,7 @@ class Game(abc.ABC):
                 break
 
             # Check if this game has ran for the maximum number of moves.
-            if ((self.game_info.max_moves > 0) and (len(result.history) >= self.game_info.max_moves)):
+            if (0 < self.game_info.max_moves <= len(result.history)):
                 state.process_game_timeout()
                 result.game_timeout = True
                 result.termination_reason = chessai.core.types.TerminationReason.GAME_TIMEOUT
