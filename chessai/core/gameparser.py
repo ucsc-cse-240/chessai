@@ -161,7 +161,7 @@ class StandardHeaders(edq.util.serial.DictConverter):
             and self.black == other.black
             and self.result == other.result)
 
-class PGNResult(enum.StrEnum):
+class PGNResult(str, enum.Enum):
     """ The possible game endings denoted in a PGN. """
 
     WHITE_WIN = '1-0'

@@ -1,6 +1,6 @@
 import enum
 
-class Color(enum.IntEnum):
+class Color(int, enum.Enum):
     """ An enum representing the side to move or the color of a piece. """
     BLACK = 0
     WHITE = 1
@@ -24,7 +24,7 @@ class Color(enum.IntEnum):
     def __bool__(self) -> bool:
         return bool(self.value)
 
-class TerminationReason(enum.StrEnum):
+class TerminationReason(str, enum.Enum):
     """ An enum representing the reason for a game to be over. """
 
     CHECKMATE = 'Checkmate'

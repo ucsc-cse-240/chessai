@@ -8,7 +8,7 @@ API documentation for all releases is available at [ucsc-cse-240.github.io/chess
 
 ## Installation / Requirements
 
-This project requires [Python](https://www.python.org/) >= 3.11.
+This project requires [Python](https://www.python.org/) >= 3.10.
 
 Standard Python requirements are listed in `pyproject.toml`.
 The project and Python dependencies can be installed from source with:
