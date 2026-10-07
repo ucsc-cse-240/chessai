@@ -20,6 +20,47 @@ import typing
 import chessai.core.search
 import chessai.search.common
 
+class Node:
+    """ A graph node with a label. """
+
+    def __init__(self,
+            label: str) -> None:
+        self.label: str = label
+
+    def __repr__(self) -> str:
+        return f"Node(label = {self.label})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            return False
+
+        return self.label == other.label
+
+    def __hash__(self) -> int:
+        return hash(self.label)
+
+class StartNode(Node):
+    """ A graph node for the start of a search problem. """
+
+    def __init__(self) -> None:
+        super().__init__("Start")
+
+class GoalNode(Node):
+    """ A graph node for the goal of a search problem. """
+
+    def __init__(self) -> None:
+        super().__init__("Goal")
+
+def manual_depth_first_search() -> typing.List[Node]:
+    """
+    Use this function to write your solution to a manual depth first search (DFS) problem.
+    This means that it will search the deepest nodes in the search tree first.
+    See: https://en.wikipedia.org/wiki/Depth-first_search .
+    """
+
+    # *** Your Code Here ***
+    raise NotImplementedError('manual_depth_first_search')
+
 def depth_first_search(
         problem: chessai.core.search.SearchProblem,
         heuristic: chessai.core.search.SearchHeuristic,
@@ -33,6 +74,16 @@ def depth_first_search(
 
     # *** Your Code Here ***
     raise NotImplementedError('depth_first_search')
+
+def manual_breadth_first_search() -> typing.List[Node]:
+    """
+    Use this function to write your solution to a manual breadth first search (BFS) problem.
+    This means that it will search nodes based on what level in search tree they appear.
+    See: https://en.wikipedia.org/wiki/Breadth-first_search .
+    """
+
+    # *** Your Code Here ***
+    raise NotImplementedError('manual_breadth_first_search')
 
 def breadth_first_search(
         problem: chessai.core.search.SearchProblem,
@@ -48,6 +99,16 @@ def breadth_first_search(
     # *** Your Code Here ***
     raise NotImplementedError('breadth_first_search')
 
+def manual_uniform_cost_search() -> typing.List[Node]:
+    """
+    Use this function to write your solution to a manual uniform cost search (UCS) problem.
+    This means that it will search nodes with a lower total cost first.
+    See: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#Practical_optimizations_and_infinite_graphs .
+    """
+
+    # *** Your Code Here ***
+    raise NotImplementedError('manual_uniform_cost_search')
+
 def uniform_cost_search(
         problem: chessai.core.search.SearchProblem,
         heuristic: chessai.core.search.SearchHeuristic,
@@ -61,6 +122,16 @@ def uniform_cost_search(
 
     # *** Your Code Here ***
     raise NotImplementedError('uniform_cost_search')
+
+def manual_astar_search() -> typing.List[Node]:
+    """
+    Use this function to write your solution to a manual A* search (pronounced "A Star search") problem.
+    This means that it will search nodes with a lower combined cost and heuristic first.
+    See: https://en.wikipedia.org/wiki/A*_search_algorithm .
+    """
+
+    # *** Your Code Here ***
+    raise NotImplementedError('manual_astar_search')
 
 def astar_search(
         problem: chessai.core.search.SearchProblem,
