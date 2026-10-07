@@ -21,7 +21,7 @@ readonly MODULE_TITLE_LOCATION='<section class="module-info">'
 readonly API_DOC_MARKER='<!-- API-DOC-MARKER -->'
 
 # Don't generate any docs for this version or earlier.
-readonly ONLY_AFTER_TAG='v2.0.2'
+readonly ONLY_AFTER_TAG='v0.0.0'
 
 function check_git() {
     if [ ! -z "$(git status --porcelain)" ] ; then
@@ -49,10 +49,10 @@ function gen_docs() {
     # Add in the label to the landing pages.
     local git_link="https://github.com/ucsc-cse-240/chessai/tree/${reference}"
 
-    local index_title="<h1 style='flex-grow: 1'>Chessai API Reference: <a href='${git_link}'>${label}</a></h1>"
+    local index_title="<h1 style='flex-grow: 1'>ChessAI API Reference: <a href='${git_link}'>${label}</a></h1>"
     sed -i "s#${INDEX_TITLE_LOCATION}#${INDEX_TITLE_LOCATION}${index_title}#" "${BUILD_DIR}/index.html"
 
-    local module_title="<h1>Chessai API Reference: <a href='${git_link}'>${label}</a></h1>"
+    local module_title="<h1>ChessAI API Reference: <a href='${git_link}'>${label}</a></h1>"
     sed -i "s#${MODULE_TITLE_LOCATION}#${MODULE_TITLE_LOCATION}${module_title}#" "${BUILD_DIR}/chessai.html"
 
     # Moved the compiled documentation to the main site.
