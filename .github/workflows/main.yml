@@ -33,6 +33,13 @@ jobs:
         shell: bash
         run: pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Debug upload condition
+        run: |
+          echo "event: ${{ github.event_name }}"
+          echo "owner: ${{ github.repository_owner }}"
+          echo "ref: ${{ github.ref }}"
+          echo "event.ref: ${{ github.event.ref }}"
+
       - name: Check Python Version Compatibility
         shell: bash
         run: scripts/check_python_version.sh
