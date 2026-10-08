@@ -15,26 +15,25 @@ class DistanceTest(edq.testing.unittest.BaseTest):
         # [(a, b, expected), ...]
         test_cases = [
             # Identity
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 0), [0.0]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 0), 0.0),
 
             # Lateral
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 0), [1.0]),
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 1), [1.0]),
-            (chessai.core.coordinate.Coordinate(1, 0), chessai.core.coordinate.Coordinate(0, 0), [1.0]),
-            (chessai.core.coordinate.Coordinate(0, 1), chessai.core.coordinate.Coordinate(0, 0), [1.0]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 0), 1.0),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 1), 1.0),
+            (chessai.core.coordinate.Coordinate(1, 0), chessai.core.coordinate.Coordinate(0, 0), 1.0),
+            (chessai.core.coordinate.Coordinate(0, 1), chessai.core.coordinate.Coordinate(0, 0), 1.0),
 
             # Diagonal
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 1), [2.0]),
-            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(2, 2), [2.0]),
-            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(0, 0), [2.0]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 1), 2.0),
+            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(2, 2), 2.0),
+            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(0, 0), 2.0),
         ]
 
         for (i, test_case) in enumerate(test_cases):
-            (a, b, expected_distances) = test_case
+            (a, b, expected_distance) = test_case
             with self.subTest(msg = f"Case {i}: {a} vs {b}"):
                 distance = chessai.search.distance.manhattan_distance(a, b)
-                for expected_distance in expected_distances:
-                    self.assertAlmostEqual(expected_distance, distance)
+                self.assertAlmostEqual(expected_distance, distance)
 
                 node = chessai.search.position.PositionSearchNode(a, test_state)
                 problem = chessai.search.position.PositionSearchProblem(
@@ -42,9 +41,8 @@ class DistanceTest(edq.testing.unittest.BaseTest):
                         start_position = a,
                         goal_positions = [b])
 
-                heuristic_distances = chessai.search.distance.manhattan_heuristic(node, problem)
-                for (expected_distance, heuristic_distance) in zip(expected_distances, heuristic_distances):
-                    self.assertAlmostEqual(expected_distance, heuristic_distance)
+                heuristic_distance = chessai.search.distance.manhattan_heuristic(node, problem)
+                self.assertAlmostEqual(expected_distance, heuristic_distance)
 
     def test_euclidean_base(self):
         """ Test Euclidean distance and heuristic. """
@@ -54,26 +52,25 @@ class DistanceTest(edq.testing.unittest.BaseTest):
         # [(a, b, expected), ...]
         test_cases = [
             # Identity
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 0), [0.0]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 0), 0.0),
 
             # Lateral
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 0), [1.0]),
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 1), [1.0]),
-            (chessai.core.coordinate.Coordinate(1, 0), chessai.core.coordinate.Coordinate(0, 0), [1.0]),
-            (chessai.core.coordinate.Coordinate(0, 1), chessai.core.coordinate.Coordinate(0, 0), [1.0]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 0), 1.0),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(0, 1), 1.0),
+            (chessai.core.coordinate.Coordinate(1, 0), chessai.core.coordinate.Coordinate(0, 0), 1.0),
+            (chessai.core.coordinate.Coordinate(0, 1), chessai.core.coordinate.Coordinate(0, 0), 1.0),
 
             # Diagonal
-            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 1), [2.0 ** 0.5]),
-            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(2, 2), [2.0 ** 0.5]),
-            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(0, 0), [2.0 ** 0.5]),
+            (chessai.core.coordinate.Coordinate(0, 0), chessai.core.coordinate.Coordinate(1, 1), 2.0 ** 0.5),
+            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(2, 2), 2.0 ** 0.5),
+            (chessai.core.coordinate.Coordinate(1, 1), chessai.core.coordinate.Coordinate(0, 0), 2.0 ** 0.5),
         ]
 
         for (i, test_case) in enumerate(test_cases):
-            (a, b, expected_distances) = test_case
+            (a, b, expected_distance) = test_case
             with self.subTest(msg = f"Case {i}: {a} vs {b}"):
                 distance = chessai.search.distance.euclidean_distance(a, b)
-                for expected_distance in expected_distances:
-                    self.assertAlmostEqual(expected_distance, distance)
+                self.assertAlmostEqual(expected_distance, distance)
 
                 node = chessai.search.position.PositionSearchNode(a, test_state)
                 problem = chessai.search.position.PositionSearchProblem(
@@ -81,9 +78,8 @@ class DistanceTest(edq.testing.unittest.BaseTest):
                         start_position = a,
                         goal_positions = [b])
 
-                heuristic_distances = chessai.search.distance.euclidean_heuristic(node, problem)
-                for (expected_distance, heuristic_distance) in zip(expected_distances, heuristic_distances):
-                    self.assertAlmostEqual(expected_distance, heuristic_distance)
+                heuristic_distance = chessai.search.distance.euclidean_heuristic(node, problem)
+                self.assertAlmostEqual(expected_distance, heuristic_distance)
 
     # def test_maze_base(self):
     #     """ Test maze distance. """
@@ -117,9 +113,9 @@ class DistanceTest(edq.testing.unittest.BaseTest):
     # def test_distanceprecomputer_base(self):
     #     """ Test precomputing distances. """
 
-    #     test_board = chessai.core.board.load_path('tour-base')
+    #     test_state = chessai.tour.gamestate.GameState.from_fen(fen = 'tour-base', seed = 4)
     #     precomputer = chessai.search.distance.DistancePreComputer()
-    #     precomputer.compute(test_board)
+    #     precomputer.compute(test_state)
 
     #     # [(a, b, expected), ...]
     #     test_cases = [
