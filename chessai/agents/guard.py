@@ -2,7 +2,7 @@ import chessai.core.action
 import chessai.core.agent
 import chessai.core.gamestate
 
-class GaurdAgent(chessai.core.agent.Agent):
+class GuardAgent(chessai.core.agent.Agent):
     """ An agent that will capture a piece if possible, otherwise it will stay still. """
 
     def get_action(self,

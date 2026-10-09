@@ -3,10 +3,10 @@
     "arguments": [
         "--seed", "4",
         "--ui", "null",
-        "--board", "gaurded-tour",
+        "--board", "guarded-tour",
         "--max-moves", "100",
         "--white", "agent-multi-scripted",
-        "--black", "agent-gaurd",
+        "--black", "agent-guard",
         "--agent-arg", "white::move_lines=[[\"d5g5\"]]"
     ]
 }

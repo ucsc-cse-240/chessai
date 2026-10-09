@@ -62,7 +62,7 @@ def lookup(short: str, default: str | None = None) -> str:
 
 AGENT_AGGRESSIVE: Alias = Alias('agent-aggressive', 'chessai.agents.aggressive.AggressiveAgent')
 AGENT_DUMMY: Alias = Alias('agent-dummy', 'chessai.agents.dummy.DummyAgent')
-AGENT_GAURD: Alias = Alias('agent-gaurd', 'chessai.agents.gaurd.GaurdAgent')
+AGENT_GAURD: Alias = Alias('agent-guard', 'chessai.agents.guard.GuardAgent')
 AGENT_GREEDY: Alias = Alias('agent-greedy', 'chessai.agents.greedy.GreedyAgent')
 AGENT_MINIMAX: Alias = Alias('agent-minimax', 'chessai.student.multiagents.MyMinimaxLikeAgent')
 AGENT_MULTI_SCRIPTED: Alias = Alias('agent-multi-scripted', 'chessai.agents.multiscripted.MultiScriptedAgent')
