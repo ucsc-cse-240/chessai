@@ -1,3 +1,3 @@
 """
-The `chessai.resources.tours` provides tour games that can be used for this project.
+The `chessai.resources.tours` package provides tour games that can be used for this project.
 """

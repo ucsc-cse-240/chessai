@@ -147,41 +147,34 @@ def astar_search(
     # *** Your Code Here ***
     raise NotImplementedError('astar_search')
 
-
-class PieceTourSearchNode(chessai.core.search.SearchNode):
+class KingEscortSearchNode(chessai.core.search.SearchNode):
     """
-    A search node representing a state in the Piece Tour problem.
+    A search node representing a state in the King Escort problem.
 
     The state must encode everything the search needs to determine:
-      1. Where the knight currently is.
-      2. Whether the goal has been reached.
-
-    For the basic Piece Tour problem (single target square),
-    the position alone is sufficient. But think carefully:
-    if you were to extend this to visiting multiple squares,
-    what additional information would your state need to track?
+      1. Where the king currently is,
+      2. where the opposing rooks are (to know where they might attack),
+      3. where your other pieces are (to know how they can block the rooks),
+      2. and whether the goal has been reached.
     """
 
     def __init__(self) -> None:
         """
-        Construct a search node for the Piece Tour problem.
+        Construct a search node for the King Escort problem.
         You may add arguments to this constructor as needed.
         """
 
         # *** Your Code Here ***
         # Remember that you can also add arguments to your constructor.
 
-class PieceTourSearchProblem(chessai.core.search.SearchProblem[PieceTourSearchNode]):
+class KingEscortSearchProblem(chessai.core.search.SearchProblem[KingEscortSearchNode]):
     """
-    A search problem for moving an arbitrary piece from a start square to target squares
+    A search problem for moving an king piece from a start square to a target square
     in the minimum number of moves.
-
-    The board is a standard 8x8 chessboard.
-    Squares are represented as (file, rank) tuples where file and rank are both in [0, 7].
-    For example, (0, 0) is a1, (7, 7) is h8.
 
     Note: A knight moves in an 'L' shape: two squares in one direction and one square perpendicular.
     A knight on (file, rank) can reach up to 8 squares.
+    You will want a good heuristic for moving your knights to protect your king!
     """
 
     def __init__(self,
@@ -195,26 +188,26 @@ class PieceTourSearchProblem(chessai.core.search.SearchProblem[PieceTourSearchNo
 
         # *** Your Code Here (if needed) ***
 
-    def get_starting_node(self) -> PieceTourSearchNode:
+    def get_starting_node(self) -> KingEscortSearchNode:
         # *** Your Code Here ***
-        raise NotImplementedError('PieceTourSearchProblem.get_starting_node')
+        raise NotImplementedError('KingEscortSearchProblem.get_starting_node')
 
-    def is_goal_node(self, node: PieceTourSearchNode) -> bool:
+    def is_goal_node(self, node: KingEscortSearchNode) -> bool:
         # *** Your Code Here ***
-        raise NotImplementedError('PieceTourSearchProblem.is_goal_node')
+        raise NotImplementedError('KingEscortSearchProblem.is_goal_node')
 
-    def get_successor_nodes(self, node: PieceTourSearchNode) -> list[chessai.core.search.SuccessorInfo]:
+    def get_successor_nodes(self, node: KingEscortSearchNode) -> list[chessai.core.search.SuccessorInfo]:
         """
         Return a list of (successor_node, action, cost) tuples representing
         all valid moves from the current node.
         """
 
         # *** Your Code Here ***
-        raise NotImplementedError('PieceTourSearchProblem.get_successor_nodes')
+        raise NotImplementedError('KingEscortSearchProblem.get_successor_nodes')
 
 def knights_tour_heuristic(
-        node: PieceTourSearchNode,
-        problem: PieceTourSearchProblem,
+        node: KingEscortSearchNode,
+        problem: KingEscortSearchProblem,
         **kwargs: typing.Any) -> float:
     """
     A heuristic for a Piece Tour using a knight.
