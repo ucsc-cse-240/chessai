@@ -30,8 +30,7 @@ def parse_escort(data: str,
             accepts_raw_string = accepts_raw_string,
             **kwargs)
 
-    # Escort games must have a single king on the agent's turn, which is always the starting turn.
-    found_king = False
+    # Escort games must at least one king on the agent's turn, which is always the starting turn.
     for _, piece in parsed_state.pieces.items():
         if not isinstance(piece, chessai.chess.piece.King):
             continue
@@ -40,10 +39,6 @@ def parse_escort(data: str,
         if (piece.color != parsed_state.turn):
             continue
 
-        found_king = True
-        break
+        return parsed_state
 
-    if not found_king:
-        raise ValueError('Escort games must have at least one king for the agent')
-
-    return parsed_state
+    raise ValueError('Escort games must have at least one king for the agent')

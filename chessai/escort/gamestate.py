@@ -57,9 +57,9 @@ class GameState(chessai.tour.gamestate.GameState):
             if (not isinstance(action, chessai.core.action.MoveAction)):
                 continue
 
-            # Remove any actions that are not capturing the King.
+            # Remove capture actions that are not capturing the King.
             piece = self.get(action.end_coordinate) # pylint: disable=no-member
-            if (not isinstance(piece, chessai.chess.piece.King)):
+            if ((piece is not None) and (not isinstance(piece, chessai.chess.piece.King))):
                 continue
 
             escort_actions.append(action)
@@ -74,9 +74,10 @@ class GameState(chessai.tour.gamestate.GameState):
 
         if isinstance(action, chessai.core.action.MoveAction):
             destination_coordinate = action.end_coordinate
+            # Get points when the king reaches the goal.
             if (destination_coordinate in self.search_targets):
-                # Get points when the king reaches the goal.
-                piece = self.get(action.end_coordinate) # pylint: disable=no-member
+                # The action has not been applied, so check the piece at the starting coordinate.
+                piece = self.get(action.start_coordinate) # pylint: disable=no-member
                 if (isinstance(piece, chessai.chess.piece.King)):
                     # Get points for reaching a search target.
                     self.remove_search_target(destination_coordinate)
@@ -84,6 +85,13 @@ class GameState(chessai.tour.gamestate.GameState):
 
         # The agent always loses a point each turn.
         self.score -= chessai.tour.gamestate.TIME_PENALTY
+
+    def _process_enemy_action(self, action: chessai.core.action.Action) -> None:
+        """ King escort games must check if the King got captured during an opponent turn. """
+
+        king_coordinate = self.get_king_coordinate(self.search_agent)
+        if (king_coordinate is None):
+            self.game_over = True
 
     def copy(self,
              context: typing.Union[typing.Any, None] = None,

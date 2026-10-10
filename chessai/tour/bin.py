@@ -18,7 +18,6 @@ DEFAULT_BOARD: str = 'tour-base'
 def set_cli_args(parser: argparse.ArgumentParser, **kwargs: typing.Any) -> argparse.ArgumentParser:
     """
     Set Tour-specific CLI arguments.
-    This is a sibling to init_from_args(), as the arguments set here can be interpreted there.
     """
 
     parser.add_argument('--white-team', dest = 'white_team',

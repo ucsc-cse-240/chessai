@@ -1,0 +1,16 @@
+{
+    "cli": "chessai.escort.bin",
+    "arguments": [
+        "--seed", "2",
+        "--ui", "null",
+        "--max-moves", "100",
+        "--agent", "agent-multi-scripted",
+        "--agent-arg", "white::move_lines=[[\"c1b3\", \"d1d2\", \"d2d3\", \"d3d4\", \"b3c5\", \"c5e6\", \"d4d5\", \"d5d6\", \"d6d7\", \"d7d8\"]]"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 500.00
+<LOG_PREFIX> -- Scores:        500
+<LOG_PREFIX> -- Record:        Win
+<LOG_PREFIX> -- Average Moves: 19.0
+<LOG_PREFIX> -- Move Counts:   19

@@ -148,6 +148,8 @@ class GameState(chessai.chess.gamestate.GameState):
         # Only update the score when it is the search agents turn.
         if (self.turn == self.search_agent):
             self._update_targets_and_score(action)
+        else:
+            self._process_enemy_action(action)
 
         self.push(action)
 
@@ -163,6 +165,12 @@ class GameState(chessai.chess.gamestate.GameState):
 
         # The agent always loses a point each turn.
         self.score -= TIME_PENALTY
+
+    def _process_enemy_action(self, action: chessai.core.action.Action) -> None:
+        """
+        Process the action of the non-player agent.
+        This can be used to make any necessary updates for subclasses.
+        """
 
     def process_agent_timeout(self, player: chessai.core.types.Color) -> None:
         # Treat timeouts like crashes.
