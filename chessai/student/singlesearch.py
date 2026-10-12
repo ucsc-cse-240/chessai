@@ -20,6 +20,7 @@ import typing
 import chessai.agents.searchproblem
 import chessai.core.search
 import chessai.search.common
+import chessai.search.distance
 
 class Node:
     """ A graph node with a label. """
@@ -148,6 +149,28 @@ def astar_search(
     # *** Your Code Here ***
     raise NotImplementedError('astar_search')
 
+def knight_distance(
+        a: chessai.core.coordinate.Coordinate,
+        b: chessai.core.coordinate.Coordinate,
+        state: chessai.core.gamestate.GameState | None = None,
+        **kwargs: typing.Any) -> float:
+    """
+    Compute the Knight's distance between two positions.
+    """
+
+    # *** Your Code Here ***
+    raise NotImplementedError('knight_distance')
+
+def knight_heuristic(
+        node: chessai.core.search.SearchNode,
+        problem: chessai.core.search.SearchProblem,
+        **kwargs: typing.Any) -> float:
+    """
+    A distance_heuristic using Knight's distance.
+    """
+
+    return chessai.search.distance.distance_heuristic(node, problem, knight_distance, **kwargs)
+
 class KingEscortSearchNode(chessai.core.search.SearchNode):
     """
     A search node representing a state in the King Escort problem.
@@ -155,8 +178,8 @@ class KingEscortSearchNode(chessai.core.search.SearchNode):
     The state must encode everything the search needs to determine:
       1. Where the king currently is,
       2. where the opposing rooks are (to know where they might attack),
-      3. where your other pieces are (to know how they can block the rooks),
-      2. and whether the goal has been reached.
+      3. where your knights are (to know how they can block the rooks),
+      4. and whether the goal has been reached.
     """
 
     def __init__(self) -> None:
@@ -175,19 +198,23 @@ class KingEscortSearchProblem(chessai.core.search.SearchProblem[KingEscortSearch
     """
 
     def __init__(self,
-            start: tuple[int, int],
-            target: tuple[int, int],
+            game_state: chessai.core.gamestate.GameState,
             **kwargs: typing.Any) -> None:
         super().__init__(**kwargs)
 
-        self._start = start
-        self._target = target
-
         # *** Your Code Here ***
+
+    def get_starting_node(self) -> KingEscortSearchNode:
+        # *** Your Code Here ***
+        raise NotImplementedError('KingEscortSearchProblem.get_starting_node')
 
     def is_goal_node(self, node: KingEscortSearchNode) -> bool:
         # *** Your Code Here ***
         raise NotImplementedError('KingEscortSearchProblem.is_goal_node')
+
+    def get_successor_nodes(self, node: KingEscortSearchNode) -> list[chessai.core.search.SuccessorInfo]:
+        # *** Your Code Here ***
+        raise NotImplementedError('KingEscortSearchProblem.get_successor_nodes')
 
 def king_escort_heuristic(
         node: KingEscortSearchNode,

@@ -94,7 +94,7 @@ AGENT_SHORT_NAMES: list[str] = [
 
 DISTANCE_EUCLIDEAN: Alias = Alias('distance-euclidean', 'chessai.search.distance.euclidean_distance')
 DISTANCE_MANHATTAN: Alias = Alias('distance-manhattan', 'chessai.search.distance.manhattan_distance')
-DISTANCE_KNIGHT: Alias = Alias('distance-knight', 'chessai.search.distance.knight_distance')
+DISTANCE_KNIGHT: Alias = Alias('distance-knight', 'chessai.student.singlesearch.knight_distance')
 
 DISTANCE_SHORT_NAMES: list[str] = [
     DISTANCE_EUCLIDEAN.short,
@@ -116,12 +116,14 @@ COST_FUNC_SHORT_NAMES: list[str] = [
 
 HEURISTIC_EUCLIDEAN: Alias = Alias('heuristic-euclidean', 'chessai.search.distance.euclidean_heuristic')
 HEURISTIC_KING_ESCORT: Alias = Alias('heuristic-king-escort', 'chessai.student.singlesearch.king_escort_heuristic')
+HEURISTIC_KNIGHT: Alias = Alias('heuristic-knight', 'chessai.student.singlesearch.knight_heuristic')
 HEURISTIC_MANHATTAN: Alias = Alias('heuristic-manhattan', 'chessai.search.distance.manhattan_heuristic')
 HEURISTIC_NULL: Alias = Alias('heuristic-null', 'chessai.search.common.null_heuristic')
 
 HEURISTIC_SHORT_NAMES: list[str] = [
     HEURISTIC_EUCLIDEAN.short,
     HEURISTIC_KING_ESCORT.short,
+    HEURISTIC_KNIGHT.short,
     HEURISTIC_MANHATTAN.short,
     HEURISTIC_NULL.short,
 ]

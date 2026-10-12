@@ -3,7 +3,6 @@ This files contains functions and tools to computing and keeping track of distan
 """
 
 import logging
-import random
 import typing
 
 import chessai.core.board
@@ -13,7 +12,6 @@ import chessai.core.coordinate
 import chessai.core.types
 import chessai.search.common
 import chessai.search.position
-import chessai.search.random
 import chessai.util.alias
 import chessai.util.reflection
 
@@ -54,40 +52,6 @@ def euclidean_distance(
     """
 
     return float(((a.rank - b.rank) ** 2 + (a.file - b.file) ** 2) ** 0.5)
-
-def knight_distance(
-        a: chessai.core.coordinate.Coordinate,
-        b: chessai.core.coordinate.Coordinate,
-        state: chessai.core.gamestate.GameState | None = None,
-        solver: chessai.core.search.SearchProblemSolver | str = chessai.util.alias.SEARCH_SOLVER_BFS.long,
-        **kwargs: typing.Any) -> float:
-    """
-    Compute the "knight distance" between any two positions.
-    This distance is the solution to a chessai.search.position.PositionSearchProblem between a and b.
-    By default, BFS will be used to solve the search problem.
-    If BFS is not implemented, then random search will be used.
-    Note that random search can take a REALLY long time,
-    so it is strongly recommended that you have BFS implemented before using this.
-    """
-
-    if (state is None):
-        raise ValueError("Cannot compute maze distance without a game state.")
-
-    # Fetch our solver.
-    if (isinstance(solver, str)):
-        solver = chessai.util.reflection.fetch(solver)
-
-    solver = typing.cast(chessai.core.search.SearchProblemSolver, solver)
-    problem = chessai.search.position.PositionSearchProblem(state, goal_position = b, start_position = a)
-    rng = random.Random(state.seed)
-
-    try:
-        solution = solver(problem, chessai.search.common.null_heuristic, rng)
-        return len(solution.actions)
-    except NotImplementedError:
-        # If this solver is not implemented, fall back to random search.
-        solution = chessai.search.random.random_search(problem, chessai.search.common.null_heuristic, rng)
-        return len(solution.actions)
 
 def distance_heuristic(
         node: chessai.core.search.SearchNode,
