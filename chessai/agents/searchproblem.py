@@ -24,7 +24,7 @@ DEFAULT_HEURISTIC: str = chessai.util.alias.HEURISTIC_NULL.long
 
 class SearchProblemAgent(chessai.core.agent.Agent):
     """
-    An agent that works by first solving a searh problem (chessai.core.search.Problem),
+    An agent that works by first solving a search problem (chessai.core.search.Problem),
     and then executing the path found during the search.
     """
 
