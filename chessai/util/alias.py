@@ -70,6 +70,7 @@ AGENT_PICK_FIRST: Alias = Alias('agent-pick-first', 'chessai.agents.pickfirst.Pi
 AGENT_RANDOM: Alias = Alias('agent-random', 'chessai.agents.random.RandomAgent')
 AGENT_REFLEX: Alias = Alias('agent-reflex', 'chessai.student.multiagents.ReflexAgent')
 AGENT_SCRIPTED: Alias = Alias('agent-scripted', 'chessai.agents.scripted.ScriptedAgent')
+AGENT_SEARCH_KING_ESCORT: Alias = Alias('agent-search-king-escort', 'chessai.student.singlesearch.KingEscortSearchAgent')
 AGENT_SEARCH_PROBLEM: Alias = Alias('agent-search-problem', 'chessai.agents.searchproblem.SearchProblemAgent')
 AGENT_TIMEOUT: Alias = Alias('agent-timeout', 'chessai.agents.testing.TimeoutAgent')
 AGENT_USER_INPUT: Alias = Alias('agent-user-input', 'chessai.agents.userinput.UserInputAgent')
@@ -77,12 +78,15 @@ AGENT_USER_INPUT: Alias = Alias('agent-user-input', 'chessai.agents.userinput.Us
 AGENT_SHORT_NAMES: list[str] = [
     AGENT_AGGRESSIVE.short,
     AGENT_DUMMY.short,
-    AGENT_MINIMAX.short,
-    AGENT_MULTI_SCRIPTED.short,
     AGENT_GUARD.short,
     AGENT_GREEDY.short,
+    AGENT_MINIMAX.short,
+    AGENT_MULTI_SCRIPTED.short,
+    AGENT_PICK_FIRST.short,
     AGENT_RANDOM.short,
+    AGENT_REFLEX.short,
     AGENT_SCRIPTED.short,
+    AGENT_SEARCH_KING_ESCORT.short,
     AGENT_SEARCH_PROBLEM.short,
     AGENT_TIMEOUT.short,
     AGENT_USER_INPUT.short,
@@ -111,13 +115,13 @@ COST_FUNC_SHORT_NAMES: list[str] = [
 ]
 
 HEURISTIC_EUCLIDEAN: Alias = Alias('heuristic-euclidean', 'chessai.search.distance.euclidean_heuristic')
-HEURISTIC_KNIGHT: Alias = Alias('heuristic-knight', 'chessai.student.singlesearch.knights_tour_heuristic')
+HEURISTIC_KING_ESCORT: Alias = Alias('heuristic-king-escort', 'chessai.student.singlesearch.king_escort_heuristic')
 HEURISTIC_MANHATTAN: Alias = Alias('heuristic-manhattan', 'chessai.search.distance.manhattan_heuristic')
 HEURISTIC_NULL: Alias = Alias('heuristic-null', 'chessai.search.common.null_heuristic')
 
 HEURISTIC_SHORT_NAMES: list[str] = [
     HEURISTIC_EUCLIDEAN.short,
-    HEURISTIC_KNIGHT.short,
+    HEURISTIC_KING_ESCORT.short,
     HEURISTIC_MANHATTAN.short,
     HEURISTIC_NULL.short,
 ]

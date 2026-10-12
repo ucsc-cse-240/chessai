@@ -17,6 +17,7 @@ You will also implement heuristics for A* and analyze their admissibility and co
 import random
 import typing
 
+import chessai.agents.searchproblem
 import chessai.core.search
 import chessai.search.common
 
@@ -171,10 +172,6 @@ class KingEscortSearchProblem(chessai.core.search.SearchProblem[KingEscortSearch
     """
     A search problem for moving an king piece from a start square to a target square
     in the minimum number of moves.
-
-    Note: A knight moves in an 'L' shape: two squares in one direction and one square perpendicular.
-    A knight on (file, rank) can reach up to 8 squares.
-    You will want a good heuristic for moving your knights to protect your king!
     """
 
     def __init__(self,
@@ -186,47 +183,37 @@ class KingEscortSearchProblem(chessai.core.search.SearchProblem[KingEscortSearch
         self._start = start
         self._target = target
 
-        # *** Your Code Here (if needed) ***
-
-    def get_starting_node(self) -> KingEscortSearchNode:
         # *** Your Code Here ***
-        raise NotImplementedError('KingEscortSearchProblem.get_starting_node')
 
     def is_goal_node(self, node: KingEscortSearchNode) -> bool:
         # *** Your Code Here ***
         raise NotImplementedError('KingEscortSearchProblem.is_goal_node')
 
-    def get_successor_nodes(self, node: KingEscortSearchNode) -> list[chessai.core.search.SuccessorInfo]:
-        """
-        Return a list of (successor_node, action, cost) tuples representing
-        all valid moves from the current node.
-        """
-
-        # *** Your Code Here ***
-        raise NotImplementedError('KingEscortSearchProblem.get_successor_nodes')
-
-def knights_tour_heuristic(
+def king_escort_heuristic(
         node: KingEscortSearchNode,
         problem: KingEscortSearchProblem,
         **kwargs: typing.Any) -> float:
     """
-    A heuristic for a Piece Tour using a knight.
+    A heuristic for KingEscortSearchProblem.
 
-    Your heuristic must be ADMISSIBLE: it must never overestimate the
-    true cost to reach the goal. Formally, for all nodes n:
-        h(n) <= h*(n)
-    where h*(n) is the true optimal cost from n to the goal.
-
-    For full credit, your heuristic should also be CONSISTENT:
-        h(n) <= cost(n, n') + h(n')
-    for every successor n' of n.
-
-    A non-trivial heuristic that is both admissible and consistent and meaningfully
-    reduces the number of nodes expanded compared to UCS will receive full credit.
-
-    Hint: Think about the minimum possible number of moves a knight could ever
-    make to close a given distance, ignoring board boundaries.
+    This function should always return a number that is a lower bound
+    on the shortest path from the state to a goal of the problem;
+    i.e. it should be admissible.
+    (You need not worry about consistency for this heuristic to receive full credit.)
     """
 
     # *** Your Code Here ***
     return chessai.search.common.null_heuristic(node, problem)
+
+class KingEscortSearchAgent(chessai.agents.searchproblem.SearchProblemAgent):
+    """
+    An agent that works by solving the king escort search problem,
+    and then executing the path found during the search.
+
+    If the above king escort related classes and functions are implemented,
+    you may not need to modify this agent.
+    """
+
+    def get_action(self, state: chessai.core.gamestate.GameState) -> chessai.core.action.Action:
+        # *** Your Code Here ***
+        return super().get_action(state)
