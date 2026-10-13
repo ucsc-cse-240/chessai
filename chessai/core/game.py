@@ -548,7 +548,7 @@ def set_cli_args(parser: argparse.ArgumentParser, default_board: str | None = No
             help = ('Play on this board (default: %(default)s).'
                     + ' This may be a FEN of the board.'
                     + ' It may also be the full path to a board, or just a filename.'
-                    + ' If just a filename, than the `chessai/resources/boards` directory will be checked (using a ".fen" extension.'))
+                    + ' If just a filename, than the `chessai/resources/boards` directory will be checked (using a ".fen" extension).'))
 
     parser.add_argument('--num-games', dest = 'num_games',
             action = 'store', type = int, default = 1,
@@ -654,8 +654,13 @@ def init_from_args(
     for i in range(args.num_games):
         game_seed = rng.randint(0, 2**64)
 
-        all_agent_infos.append(copy.deepcopy(agent_infos))
-        # TODO: Check for args.alternate_sides in a safe way to see if we need to switch.
+        current_agent_infos = copy.deepcopy(agent_infos)
+        args_dict = vars(args)
+        rotate_sides = args_dict.get('rotate_sides', False)
+        if (rotate_sides and (i % 2 != 0)):
+            current_agent_infos = {color.opposite(): agent for (color, agent) in current_agent_infos.items()}
+
+        all_agent_infos.append(current_agent_infos)
         all_fens.append(args.board)
 
         white_agent_info = all_agent_infos[-1].get(chessai.core.types.Color.WHITE, None)

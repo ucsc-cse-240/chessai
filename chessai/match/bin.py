@@ -3,9 +3,13 @@ The main executable for running a Chess match, or a series of Chess games.
 """
 
 import argparse
+import logging
+import math
 import typing
 
 import chessai.chess.game
+import chessai.core.agentinfo
+import chessai.core.types
 import chessai.util.alias
 import chessai.util.bin
 
@@ -25,9 +29,9 @@ def set_cli_args(parser: argparse.ArgumentParser, **kwargs: typing.Any) -> argpa
             help = ('Select the chess team that will start by playing on the black team (default: %(default)s).'
                     + f' Builtin teams: {chessai.util.alias.AGENT_SHORT_NAMES}.'))
 
-    parser.add_argument('--alternate-sides', dest = 'alternate_sides',
+    parser.add_argument('--rotate-sides', dest = 'rotate_sides',
             action = 'store_true',
-            help = ('Alternate the sides player one and player two play on between each game.'))
+            help = ('Rotate the sides player one and player two play on between each game.'))
 
     return parser
 
@@ -36,16 +40,72 @@ def init_from_args(args: argparse.Namespace) -> tuple[dict[chessai.core.types.Co
     """
     Setup agents based on Chess rules.
 
-    Agent infos are supplied via the `--white-team` and `--black-team` arguments.
+    Agent infos are supplied via the `--player-one` and `--player-two` arguments.
     Missing agents will be filled in with random agents.
     """
 
     base_agent_infos: dict[chessai.core.types.Color, chessai.core.agentinfo.AgentInfo] = {
-        chessai.core.types.Color.WHITE: chessai.core.agentinfo.AgentInfo(name = args.white_team),
-        chessai.core.types.Color.BLACK: chessai.core.agentinfo.AgentInfo(name = args.black_team),
+        chessai.core.types.Color.WHITE: chessai.core.agentinfo.AgentInfo(name = args.player_one),
+        chessai.core.types.Color.BLACK: chessai.core.agentinfo.AgentInfo(name = args.player_two),
     }
 
     return base_agent_infos, [], {}
+
+def log_match_results(results: list[chessai.core.game.GameResult], winning_agent_teams: set[chessai.core.types.Color], prefix: str = '') -> None:
+    """
+    Log the result of running several match games.
+    """
+
+    # player_one = '?'
+    # player_two = '?'
+    # if (len(results) > 0):
+    #     player_one = str(results[0].game_info.agent_infos[chessai.core.types.Color.WHITE].name)
+    #     player_two = str(results[0].game_info.agent_infos[chessai.core.types.Color.BLACK].name)
+
+    move_counts: list[int] = [len(result.history) for result in results]
+    scores: list[float] = [result.score for result in results]
+
+    record: list[str] = []
+    for result in results:
+        if (math.isclose(result.score, 0.5)):
+            record.append('Tie')
+        elif (math.isclose(result.score, 1.0)):
+            record.append('Win')
+        else:
+            record.append('Loss')
+
+    average_score: float = (sum(scores)) / len(scores)
+    logging.info('Average Score: %0.2f', average_score)
+
+    # Avoid logging long lists (which can be a bit slow in Python's logging module).
+    log_lists_to_info: bool = (len(results) < chessai.util.bin.SCORE_LIST_MAX_INFO_LENGTH)
+    log_lists_to_debug: bool = (logging.getLogger().getEffectiveLevel() <= logging.DEBUG)
+
+    joined_scores: str = ''
+    joined_record: str = ''
+    joined_move_counts: str = ''
+
+    if (log_lists_to_info or log_lists_to_debug):
+        joined_scores = ', '.join([str(score) for score in scores])
+        joined_record = ', '.join(record)
+        joined_move_counts = ', '.join([str(move_count) for move_count in move_counts])
+
+    if (log_lists_to_info):
+        logging.info('%sScores:        %s', prefix, joined_scores)
+    elif (log_lists_to_debug):
+        logging.debug('%sScores:        %s', prefix, joined_scores)
+
+    if (log_lists_to_info):
+        logging.info('%sRecord:        %s', prefix, joined_record)
+    elif (log_lists_to_debug):
+        logging.debug('%sRecord:        %s', prefix, joined_record)
+
+    logging.info('%sAverage Moves: %s', prefix, sum(move_counts) / float(len(results)))
+
+    if (log_lists_to_info):
+        logging.info('%sMove Counts:   %s', prefix, joined_move_counts)
+    elif (log_lists_to_debug):
+        logging.debug('%sMove Counts:   %s', prefix, joined_move_counts)
 
 def main(argv: list[str] | None = None) -> list[chessai.core.game.GameResult]:
     """
@@ -61,6 +121,7 @@ def main(argv: list[str] | None = None) -> list[chessai.core.game.GameResult]:
         default_board = None,
         custom_set_cli_args = set_cli_args,
         custom_init_from_args = init_from_args,
+        log_results = log_match_results,
         argv = argv,
     )
 
