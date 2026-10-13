@@ -655,6 +655,7 @@ def init_from_args(
         game_seed = rng.randint(0, 2**64)
 
         all_agent_infos.append(copy.deepcopy(agent_infos))
+        # TODO: Check for args.alternate_sides in a safe way to see if we need to switch.
         all_fens.append(args.board)
 
         white_agent_info = all_agent_infos[-1].get(chessai.core.types.Color.WHITE, None)
