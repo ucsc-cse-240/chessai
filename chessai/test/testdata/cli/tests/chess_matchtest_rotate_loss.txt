@@ -1,0 +1,20 @@
+{
+    "cli": "chessai.match.bin",
+    "arguments": [
+        "--seed", "2",
+        "--ui", "null",
+        "--max-moves", "200",
+        "--player-one", "agent-guard",
+        "--player-two", "agent-random",
+        "--num-games", "2",
+        "--rotate-sides"
+    ]
+}
+---
+<LOG_PREFIX> -- Player white made an illegal action: 0000.
+<LOG_PREFIX> -- Player black made an illegal action: 0000.
+<LOG_PREFIX> -- Average Score: 0.00
+<LOG_PREFIX> -- Scores:        0.0, 0.0
+<LOG_PREFIX> -- Record:        Loss, Loss
+<LOG_PREFIX> -- Average Moves: 1.5
+<LOG_PREFIX> -- Move Counts:   1, 2

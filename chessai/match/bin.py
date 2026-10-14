@@ -56,20 +56,28 @@ def log_match_results(results: list[chessai.core.game.GameResult], winning_agent
     Log the result of running several match games.
     """
 
-    # player_one = '?'
-    # player_two = '?'
-    # if (len(results) > 0):
-    #     player_one = str(results[0].game_info.agent_infos[chessai.core.types.Color.WHITE].name)
-    #     player_two = str(results[0].game_info.agent_infos[chessai.core.types.Color.BLACK].name)
-
     move_counts: list[int] = [len(result.history) for result in results]
     scores: list[float] = [result.score for result in results]
 
+    # Determine if we rotated sides during the match.
+    if (len(results) > 1):
+        game_one_white_name = str(results[0].game_info.agent_infos[chessai.core.types.Color.WHITE].name)
+        game_two_white_name = str(results[1].game_info.agent_infos[chessai.core.types.Color.WHITE].name)
+
+        # Player one is not the same for match one and two, so we must have rotated sides.
+        if game_one_white_name != game_two_white_name:
+            for i, score in enumerate(scores):
+                if (i % 2 == 0):
+                    continue
+
+                # Flip the score so all scores are in the perspective of player one.
+                scores[i] = abs(1 - score)
+
     record: list[str] = []
-    for result in results:
-        if (math.isclose(result.score, 0.5)):
+    for score in scores:
+        if (math.isclose(score, 0.5)):
             record.append('Tie')
-        elif (math.isclose(result.score, 1.0)):
+        elif (math.isclose(score, 1.0)):
             record.append('Win')
         else:
             record.append('Loss')

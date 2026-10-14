@@ -66,6 +66,15 @@ class GameState(edq.util.serial.DictConverter):
         self.game_over: bool = game_over
         """ Indicates that this state represents a complete game. """
 
+        self._agent_crashed: bool = False
+        """ Indicates that an agent crashed. """
+
+        self._agent_timeout: bool = False
+        """ Indicates that an agent timed out. """
+
+        self._game_timeout: bool = False
+        """ Indicates that the game timed out. """
+
     def get_fen(self, partial: bool = False) -> str:
         """
         Serialize the current gamestate to a FEN string.
@@ -328,18 +337,55 @@ class GameState(edq.util.serial.DictConverter):
         An empty list signifies the game is in progress or it is a tie.
         """
 
-        # If the previous agent forfeited the game, the current agent won.
-        if (isinstance(self.get_previous_action(), chessai.core.action.ForfeitAction)):
-            return [self.turn]
-
-        # If the agent is in checkmate, the opponent won.
-        if (self.is_checkmate()):
-            return [self.turn.opposite()]
-
-        return []
+        match self.get_termination_reason():
+            # If the agent is in checkmate, the opponent won.
+            case chessai.core.types.TerminationReason.CHECKMATE:
+                return [self.turn.opposite()]
+            # Stalemate ends the game in a tie.
+            case chessai.core.types.TerminationReason.STALEMATE:
+                return []
+            # Insufficient material ends the game in a tie.
+            case chessai.core.types.TerminationReason.INSUFFICIENT_MATERIAL:
+                return []
+            # If the agent forfeit, the opponent won.
+            case chessai.core.types.TerminationReason.FORFEIT:
+                return [self.turn.opposite()]
+            # Agents agreed on a draw, so the game ends in a tie.
+            case chessai.core.types.TerminationReason.ACCEPTED_DRAW_PROPOSAL:
+                return []
+            # The current agent crashed, so the opponent won.
+            case chessai.core.types.TerminationReason.AGENT_CRASHED:
+                return [self.turn.opposite()]
+            # The current agent timed out, so the opponent won.
+            case chessai.core.types.TerminationReason.AGENT_TIMEOUT:
+                return [self.turn.opposite()]
+            # The game timed out, so it ends in a tie.
+            case chessai.core.types.TerminationReason.GAME_TIMEOUT:
+                return []
+            # The game is in progress, so there is not a winner.
+            case chessai.core.types.TerminationReason.IN_PROGRESS:
+                return []
+            # The current agent won.
+            case chessai.core.types.TerminationReason.VARIANT_WIN:
+                return [self.turn]
+            # The opposing agent won.
+            case chessai.core.types.TerminationReason.VARIANT_LOSS:
+                return [self.turn]
+            # Unknown termination, so the game is a tie.
+            case chessai.core.types.TerminationReason.UNKNOWN:
+                return []
 
     def get_termination_reason(self) -> chessai.core.types.TerminationReason:
         """ Return the reason the game ended. """
+
+        if (self._agent_crashed):
+            return chessai.core.types.TerminationReason.AGENT_CRASHED
+
+        if (self._agent_timeout):
+            return chessai.core.types.TerminationReason.AGENT_TIMEOUT
+
+        if (self._game_timeout):
+            return chessai.core.types.TerminationReason.GAME_TIMEOUT
 
         if (self.is_checkmate()):
             return chessai.core.types.TerminationReason.CHECKMATE
@@ -662,6 +708,10 @@ class GameState(edq.util.serial.DictConverter):
             seed            = self.seed,
             game_over       = self.game_over)
 
+        new_state._agent_crashed = self._agent_crashed
+        new_state._agent_timeout = self._agent_timeout
+        new_state._game_timeout = self._game_timeout
+
         return new_state
 
     def generate_successor(self,
@@ -708,6 +758,7 @@ class GameState(edq.util.serial.DictConverter):
         The state should make any updates and set the end of game information.
         """
 
+        self._agent_timeout = True
         self.game_over = True
 
     def process_agent_crash(self, player: chessai.core.types.Color) -> None:
@@ -716,6 +767,7 @@ class GameState(edq.util.serial.DictConverter):
         The state should make any updates and set the end of game information.
         """
 
+        self._agent_crashed = True
         self.game_over = True
 
     def process_game_timeout(self) -> None:
@@ -724,6 +776,7 @@ class GameState(edq.util.serial.DictConverter):
         The state should make any updates and set the end of game information.
         """
 
+        self._game_timeout = True
         self.game_over = True
 
     def process_turn(self,

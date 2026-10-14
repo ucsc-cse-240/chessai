@@ -1,0 +1,17 @@
+{
+    "cli": "chessai.match.bin",
+    "arguments": [
+        "--seed", "2",
+        "--ui", "null",
+        "--max-moves", "200",
+        "--num-games", "2",
+        "--player-one", "agent-random",
+        "--player-two", "agent-aggressive"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 0.50
+<LOG_PREFIX> -- Scores:        0.5, 0.5
+<LOG_PREFIX> -- Record:        Tie, Tie
+<LOG_PREFIX> -- Average Moves: 128.0
+<LOG_PREFIX> -- Move Counts:   200, 56

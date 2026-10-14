@@ -388,7 +388,11 @@ class Game(abc.ABC):
 
         action = action_record.get_action()
         if (action not in state.get_legal_actions()):
-            raise ValueError(f"Illegal action for agent {action_record.player}: '{action.uci()}' of type '{type(action)}'.")
+            logging.warning("Player %s made an illegal action: %s.", action_record.player, action.uci())
+            result.crash_agent_teams.append(action_record.player)
+            result.termination_reason = chessai.core.types.TerminationReason.AGENT_CRASHED
+            state.process_agent_crash(action_record.player)
+            return state
 
         # Add the action to the action history.
         self.action_history.append(action)
