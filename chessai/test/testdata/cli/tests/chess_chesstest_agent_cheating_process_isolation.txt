@@ -1,5 +1,6 @@
 {
     "cli": "chessai.chess.bin",
+    "platform_skip": "darwin|win32",
     "arguments": [
         "--seed", "4",
         "--ui", "null",
