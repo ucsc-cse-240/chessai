@@ -1,0 +1,21 @@
+{
+    "cli": "chessai.chess.bin",
+    "platform_skip": "darwin|win32",
+    "arguments": [
+        "--seed", "4",
+        "--ui", "null",
+        "--white-team", "agent-timeout",
+        "--isolation", "process",
+        "--agent-start-timeout", "0.1",
+        "--agent-end-timeout", "0.1",
+        "--agent-action-timeout", "0.1",
+        "--agent-arg", "white::game_start_wait=0.2",
+        "--max-moves", "2"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 0.00
+<LOG_PREFIX> -- Scores:        0.0
+<LOG_PREFIX> -- Record:        Loss
+<LOG_PREFIX> -- Average Moves: 0.0
+<LOG_PREFIX> -- Move Counts:   0

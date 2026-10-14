@@ -1,0 +1,20 @@
+{
+    "cli": "chessai.chess.bin",
+    "platform_skip": "darwin|win32",
+    "arguments": [
+        "--seed", "4",
+        "--ui", "null",
+        "--white-team", "agent-timeout",
+        "--isolation", "process",
+        "--agent-start-timeout", "0.1",
+        "--agent-end-timeout", "0.1",
+        "--agent-action-timeout", "0.1",
+        "--max-moves", "2"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 0.50
+<LOG_PREFIX> -- Scores:        0.5
+<LOG_PREFIX> -- Record:        Tie
+<LOG_PREFIX> -- Average Moves: 2.0
+<LOG_PREFIX> -- Move Counts:   2
