@@ -1,0 +1,15 @@
+{
+    "cli": "chessai.chess.bin",
+    "arguments": [
+        "--seed", "4",
+        "--ui", "null",
+        "--white-team", "agent-random",
+        "--black-team", "agent-cheating"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 0.00
+<LOG_PREFIX> -- Scores:        0.0
+<LOG_PREFIX> -- Record:        Loss
+<LOG_PREFIX> -- Average Moves: 2.0
+<LOG_PREFIX> -- Move Counts:   2

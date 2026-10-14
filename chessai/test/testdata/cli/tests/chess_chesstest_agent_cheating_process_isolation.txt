@@ -1,0 +1,16 @@
+{
+    "cli": "chessai.chess.bin",
+    "arguments": [
+        "--seed", "4",
+        "--ui", "null",
+        "--white-team", "agent-cheating",
+        "--isolation", "process"
+    ]
+}
+---
+<LOG_PREFIX> -- Player white made an illegal action: d7a4.
+<LOG_PREFIX> -- Average Score: 0.00
+<LOG_PREFIX> -- Scores:        0.0
+<LOG_PREFIX> -- Record:        Loss
+<LOG_PREFIX> -- Average Moves: 1.0
+<LOG_PREFIX> -- Move Counts:   1

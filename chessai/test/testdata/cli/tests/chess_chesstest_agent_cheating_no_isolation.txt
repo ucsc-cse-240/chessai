@@ -1,0 +1,15 @@
+{
+    "cli": "chessai.chess.bin",
+    "arguments": [
+        "--seed", "4",
+        "--ui", "null",
+        "--white-team", "agent-cheating",
+        "--isolation", "none"
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 1.00
+<LOG_PREFIX> -- Scores:        1.0
+<LOG_PREFIX> -- Record:        Win
+<LOG_PREFIX> -- Average Moves: 1.0
+<LOG_PREFIX> -- Move Counts:   1

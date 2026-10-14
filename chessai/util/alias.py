@@ -61,6 +61,7 @@ def lookup(short: str, default: str | None = None) -> str:
     raise ValueError(f"Could not find alias: '{short}'.")
 
 AGENT_AGGRESSIVE: Alias = Alias('agent-aggressive', 'chessai.agents.aggressive.AggressiveAgent')
+AGENT_CHEATING: Alias = Alias('agent-cheating', 'chessai.agents.cheating.CheatingAgent')
 AGENT_DUMMY: Alias = Alias('agent-dummy', 'chessai.agents.dummy.DummyAgent')
 AGENT_GUARD: Alias = Alias('agent-guard', 'chessai.agents.guard.GuardAgent')
 AGENT_GREEDY: Alias = Alias('agent-greedy', 'chessai.agents.greedy.GreedyAgent')
@@ -77,6 +78,7 @@ AGENT_USER_INPUT: Alias = Alias('agent-user-input', 'chessai.agents.userinput.Us
 
 AGENT_SHORT_NAMES: list[str] = [
     AGENT_AGGRESSIVE.short,
+    AGENT_CHEATING.short,
     AGENT_DUMMY.short,
     AGENT_GUARD.short,
     AGENT_GREEDY.short,
