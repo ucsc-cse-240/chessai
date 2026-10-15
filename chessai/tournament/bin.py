@@ -3,9 +3,11 @@ The main executable for running a Chess tournament.
 """
 
 import argparse
-import logging
-import multiprocessing.pool
+import concurrent.futures
+import math
 import os
+import random
+import re
 import subprocess
 import sys
 import typing
@@ -14,18 +16,219 @@ import edq.core.argparser
 import edq.util.dirent
 import edq.util.json
 
+import chessai.core.game
 import chessai.core.tournament
-import chessai.util
 
-_logger = logging.getLogger(__name__)
+DELIM: str = "\t"
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.join(THIS_DIR, '..', '..')
 
-DELIM: str = "\t"
+FAILURE_STATUS: str = 'failed'
+SUCCESS_STATUS: str = 'success'
 
-# TODO: Fix the headers to be useful.
-INITIAL_HEADERS: typing.List[str] = ['id', 'name', 'owner', 'price', 'url']
+MS_PER_SECOND: int = 1000
+
+SUMMARY_HEADERS: list[str] = [
+    'id', 'player_one', 'player_two', 'seed', 'status', 'error', 'games_run',
+    'player_one_wins', 'ties', 'player_one_losses', 'player_one_score',
+    'average_moves', 'average_duration_secs', 'log_path', 'replay_path',
+]
+
+def _safe_name(value: str) -> str:
+    """ Convert a supplied identifier into one safe path component. """
+
+    safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', value.strip()).strip('.-')
+    if len(safe_value) > 0:
+        return safe_value
+
+    # Default to a standard name.
+    return 'match'
+
+def _match_args(game: chessai.core.tournament.Game, args: argparse.Namespace,
+        result_path: str, replay_path: str | None) -> list[str]:
+    """ Build the compatible match CLI arguments for one scheduled match. """
+
+    match_args = [
+        sys.executable, '-m', 'chessai.match',
+        '--player-one', game.player_one,
+        '--player-two', game.player_two,
+        '--num-games', str(args.num_games),
+        '--seed', str(game.seed),
+        '--max-moves', str(args.max_moves),
+        '--agent-start-timeout', str(args.agent_start_timeout),
+        '--agent-end-timeout', str(args.agent_end_timeout),
+        '--agent-action-timeout', str(args.agent_action_timeout),
+        '--isolation', args.isolation_level,
+        '--ui', 'null',
+        '--result-path', result_path,
+    ]
+
+    if (args.board is not None):
+        match_args += ['--board', args.board]
+
+    if (args.rotate_sides):
+        match_args.append('--rotate-sides')
+
+    for raw_agent_arg in args.raw_agent_args:
+        match_args += ['--agent-arg', raw_agent_arg]
+
+    if (replay_path is not None):
+        match_args += ['--save-path', replay_path]
+
+    return match_args
+
+def _run_tournament_match(
+        index: int,
+        game: chessai.core.tournament.Game,
+        args: argparse.Namespace,
+        ) -> chessai.core.tournament.Game:
+    """ Run one scheduled match and attach its result or failure information. """
+
+    log_path: str | None = None
+    replay_path: str | None = None
+    if (args.output_dir is None):
+        result_path = edq.util.dirent.get_temp_path('chessai-tournament-', '.json')
+    else:
+        name = f'{index + 1:04d}'
+        if (game.id is not None):
+            name = f'{name}-{_safe_name(game.id)}'
+
+        match_dir = os.path.join(args.output_dir, name)
+        os.makedirs(match_dir, exist_ok = True)
+        result_path = os.path.join(match_dir, 'results.json')
+        log_path = os.path.join(match_dir, 'match.log')
+        replay_path = os.path.join(match_dir, 'game.pgn')
+        game.log_path = os.path.relpath(log_path, args.output_dir)
+        game.replay_path = os.path.relpath(replay_path, args.output_dir)
+
+    try:
+        if (log_path is None):
+            subprocess.run(_match_args(game, args, result_path, replay_path), check = True,
+                cwd = args._root_dir, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+        else:
+            with open(log_path, 'w', encoding = 'utf-8') as log_file:
+                subprocess.run(_match_args(game, args, result_path, replay_path), check = True,
+                    cwd = args._root_dir, stdout = log_file, stderr = subprocess.STDOUT)
+
+        raw_results = edq.util.json.load_path(result_path, strict = True)
+        game.results = raw_results
+        game.status = SUCCESS_STATUS
+        game.error = None
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError) as error:
+        game.status = FAILURE_STATUS
+        game.error = str(error)
+    finally:
+        if (args.output_dir is None) and os.path.exists(result_path):
+            os.unlink(result_path)
+
+    return game
+
+def _run_tournament(games: list[chessai.core.tournament.Game], args: argparse.Namespace) -> None:
+    """ Run scheduled matches concurrently while preserving source order. """
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers = args.workers) as executor:
+        futures = [executor.submit(_run_tournament_match, index, game, args)
+                   for (index, game) in enumerate(games)]
+        for (index, future) in enumerate(futures):
+            games[index] = future.result()
+
+def run_cli(args: argparse.Namespace) -> int:
+    """ Run the CLI. """
+
+    raw_games = edq.util.json.load_path(args.path, strict = True)
+    if (not isinstance(raw_games, list)):
+        raise ValueError('Tournament data must be a JSON array of match objects.')
+
+    games = [chessai.core.tournament.Game.from_dict(raw_game) for raw_game in raw_games]
+    ids = [game.id for game in games if (game.id is not None)]
+    if (len(ids) != len(set(ids))):
+        raise ValueError('Tournament match IDs must be unique.')
+
+    # Set the tournament seed.
+    tournament_seed = random.randint(0, 2**64)
+    if (args.seed is not None):
+        tournament_seed = args.seed
+
+    # Generate seeds for each match.
+    rng = random.Random(tournament_seed)
+    for game in games:
+        game.seed = rng.randint(0, 2**64)
+
+    # Run the tournament.
+    _run_tournament(games, args)
+
+    summaries = [_summary(game, args.rotate_sides) for game in games]
+    if (args.json):
+        output = []
+        for (game, summary) in zip(games, summaries):
+            record = game.to_dict()
+            record['summary'] = summary
+            output.append(record)
+
+        print(edq.util.json.dumps(output, indent = 4))
+    else:
+        print(DELIM.join(SUMMARY_HEADERS))
+        for summary in summaries:
+            print(DELIM.join(_table_value(summary[header]) for header in SUMMARY_HEADERS))
+
+    if any((game.status == FAILURE_STATUS) for game in games):
+        return 1
+
+    return 0
+
+def _summary(game: chessai.core.tournament.Game, rotate_sides: bool) -> dict[str, typing.Any]:
+    """ Build one flat, player-one-oriented summary record. """
+
+    scores: list[float] = []
+    for (index, result) in enumerate(game.results):
+        score = float(result['score'])
+        if rotate_sides and ((index % 2) == 1):
+            score = 1 - score
+
+        scores.append(score)
+
+    wins = sum(math.isclose(score, 1.0) for score in scores)
+    ties = sum(math.isclose(score, 0.5) for score in scores)
+
+    average_player_one_score = None
+    if (len(scores) > 0):
+        average_player_one_score = sum(scores) / len(scores)
+
+    move_counts = [len(result['history']) for result in game.results]
+    average_move_counts = None
+    if (len(move_counts) > 0):
+        average_move_counts = sum(move_counts) / len(move_counts)
+
+    durations = []
+    for result in game.results:
+        if (result['end_time'] is None):
+            continue
+
+        duration_secs = (int(result['end_time']) - int(result['start_time'])) / MS_PER_SECOND
+        durations.append(duration_secs)
+
+    average_duration_secs = None
+    if (len(durations) > 0):
+        average_duration_secs = sum(durations) / len(durations)
+
+    return {
+        'player_one': game.player_one,
+        'player_two': game.player_two,
+        'id': game.id,
+        'seed': game.seed,
+        'status': game.status,
+        'error': game.error,
+        'games_run': len(game.results),
+        'player_one_wins': wins,
+        'ties': ties,
+        'player_one_losses': len(scores) - wins - ties,
+        'player_one_score': average_player_one_score,
+        'average_moves': average_move_counts,
+        'average_duration_secs': average_duration_secs,
+        'log_path': game.log_path,
+        'replay_path': game.replay_path,
+    }
 
 def _table_value(value: typing.Any) -> str:
     """
@@ -37,104 +240,27 @@ def _table_value(value: typing.Any) -> str:
 
     return str(value).replace("\t", ' ')
 
-def _run_tournament_match(
-        # TODO: May need to define a new tournament game model.
-        game: chessai.core.tournament.Game,
-        rotate_sides: bool,
-        num_games: int,
-        seed: typing.Union[int, None],
-        ) -> None:
-    """ Run a single tournament match between two players. """
-
-    _logger.info("Computing stats for game `%s`.", game.long_name())
-
-    temp_path = edq.util.dirent.get_temp_path('chessai-', '.json')
-    edq.util.json.dump_path(game, temp_path)
-
-    # How should we pass the standard game options collected from set_cli_args?
-    args = [
-        'python3',
-        '-m', 'chessai.match.bin',
-        '--player-one', game.TODO,
-        '--player-two', game.TODO,
-    ]
-
-    if (rotate_sides):
-        args += ['--rotate-sides']
-
-    if (seed is not None):
-        args += ['--seed', str(seed)]
-
-    result = subprocess.run(args, capture_output = True, shell = False, cwd = ROOT_DIR, check = True, text = True)
-
-    new_game = chessai.core.tournament.Game.from_dict(edq.util.json.loads(result.stdout, strict = True))
-    game.stats = new_game.stats
-
-    _logger.info("Done computing stats for game `%s`.", game.long_name())
-
-def _run_tournament(games: typing.List[chessai.core.tournament], args: argparse.Namespace):
-    """ Run a match in the tournament. """
-
-    with multiprocessing.pool.ThreadPool() as pool:
-        work_results = []
-        for game in games:
-            work_results.append(pool.apply_async(_run_tournament_match, (game, args.simulation, args.num_simulation_runs, args.seed)))
-
-        for work_result in work_results:
-            work_result.wait()
-            work_result.get()
-
-def run_cli(args: argparse.Namespace) -> int:
-    """ Run the CLI. """
-
-    games = []
-    for raw_game in edq.util.json.load_path(args.path, strict = True):
-        games.append(chessai.core.tournament.Game.from_dict(raw_game))
-
-    # Run tournament
-    _run_tournament(games, args)
-
-    if (args.json):
-        print(edq.util.json.dumps(games, indent = 4))
-        return 0
-
-    # Convert the info to a dict, so it can be flattented for the output table.
-    flat_games = [chessai.util.flatten_dict(game.to_dict()) for game in games]
-
-    # Collect all the possible fields/headers
-    all_headers = set()
-    for flat_game in flat_games:
-        all_headers |= set(flat_game.keys())
-
-    # Remove headers that will be at the front.
-    all_headers -= set(INITIAL_HEADERS)
-
-    # Sort keys by the nested level (from flatening) and then lexicographically.
-    headers = INITIAL_HEADERS + sorted(all_headers, key = lambda header: (header.count(chessai.util.DEFAULT_KEY_DELIM), header))
-
-    rows = []
-    for flat_game in flat_games:
-        rows.append([_table_value(flat_game.get(header, None)) for header in headers])
-
-    print(DELIM.join(headers))
-    for row in rows:
-        print(DELIM.join(row))
-
-    return 0
-
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """
     Invoke a tournament.
 
     Will return if running the tournament was successful.
     """
 
-    return run_cli(_get_parser().parse_args())
+    args = _get_parser().parse_args(argv)
+    if (args.workers <= 0):
+        raise ValueError(f'--workers must be positive, {args.workers} was specified.')
+
+    if ((args.save_path is not None) or (args.replay_path is not None) or args.wait_for_user):
+        raise ValueError('Tournament mode manages replays itself; do not use --save-path, --replay-path, or --wait-for-input.')
+
+    args._root_dir = ROOT_DIR
+    return run_cli(args)
 
 def _get_parser() -> argparse.ArgumentParser:
     """ Get the parser. """
 
-    parser = edq.core.argparser.get_default_parser(__doc__.strip())
+    parser = typing.cast(argparse.ArgumentParser, edq.core.argparser.get_default_parser(__doc__.strip()))
 
     # Get the standard game options.
     parser = chessai.core.game.set_cli_args(parser, None)
@@ -147,9 +273,14 @@ def _get_parser() -> argparse.ArgumentParser:
         action = 'store_true', default = False,
         help = 'Output data as JSON instead of TSV.')
 
-    parser.add_argument('--rotate-sides', dest = 'rotate_sides',
-        action = 'store_false', default = True,
-        help = 'Rotate sides between each game in the match (default: %(default)s).')
+    parser.add_argument('--rotate-sides', dest = 'rotate_sides', action = 'store_true',
+        help = 'Rotate player sides between games in every match.')
+
+    parser.add_argument('--workers', type = int, default = os.cpu_count() or 1,
+        help = 'Maximum number of matches to run concurrently (default: %(default)s).')
+
+    parser.add_argument('--output-dir', type = str, default = None,
+        help = 'Directory in which to save per-match logs and PGN replays.')
 
     return parser
 

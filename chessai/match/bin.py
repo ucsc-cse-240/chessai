@@ -7,6 +7,8 @@ import logging
 import math
 import typing
 
+import edq.util.json
+
 import chessai.chess.game
 import chessai.core.agentinfo
 import chessai.core.types
@@ -32,6 +34,10 @@ def set_cli_args(parser: argparse.ArgumentParser, **kwargs: typing.Any) -> argpa
     parser.add_argument('--rotate-sides', dest = 'rotate_sides',
             action = 'store_true',
             help = ('Rotate the sides player one and player two play on between each game.'))
+
+    parser.add_argument('--result-path', dest = 'result_path',
+            action = 'store', type = str, default = None,
+            help = 'If specified, write the structured game results as JSON to this path.')
 
     return parser
 
@@ -122,16 +128,27 @@ def main(argv: list[str] | None = None) -> list[chessai.core.game.GameResult]:
     Will return the results of the games.
     """
 
-    return chessai.util.bin.run_main(
+    parser = chessai.util.bin.get_parser(
         description = "Play a match of chess.",
-        game_class = chessai.chess.game.Game,
-        state_class = chessai.chess.gamestate.GameState,
         default_board = None,
         custom_set_cli_args = set_cli_args,
+    )
+
+    args = chessai.util.bin.parse_args(
+        parser,
+        chessai.chess.game.Game,
+        chessai.chess.gamestate.GameState,
         custom_init_from_args = init_from_args,
-        log_results = log_match_results,
         argv = argv,
     )
+
+    results = chessai.util.bin.run_games(args, log_results = log_match_results)
+
+    # Write results to a file so they can be collected.
+    if (args.result_path is not None):
+        edq.util.json.dump_path(results, args.result_path)
+
+    return results
 
 if (__name__ == '__main__'):
     main()
