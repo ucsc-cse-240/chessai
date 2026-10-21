@@ -1,286 +1,338 @@
 """
-The main executable for running a Chess tournament.
+Run a round-robin tournament between staff and student agents.
+The results of each match will be output as JSON.
 """
 
 import argparse
 import concurrent.futures
+import contextlib
+import dataclasses
 import math
 import os
 import random
 import re
-import subprocess
 import sys
 import typing
 
 import edq.core.argparser
-import edq.util.dirent
 import edq.util.json
 
-import chessai.core.game
-import chessai.core.tournament
+import chessai.core.isolation.level
+import chessai.match.bin
 
 DELIM: str = "\t"
-
-THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-ROOT_DIR: str = os.path.join(THIS_DIR, '..', '..')
-
 FAILURE_STATUS: str = 'failed'
 SUCCESS_STATUS: str = 'success'
-
 MS_PER_SECOND: int = 1000
 
+AGENT_FILENAME: str = 'tournament.py'
+AGENT_CLASS_NAME: str = 'TournamentAgent'
+
+THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
+SPECIAL_TEAMS_DIR: str = os.path.join(ROOT_DIR, 'special_teams')
+SUBMISSIONS_DIR: str = os.path.join(ROOT_DIR, '_submissions')
+
+DEFAULT_AGENT_ACTION_TIMEOUT: int = 3
+DEFAULT_AGENT_START_TIMEOUT: int = 15
+DEFAULT_AGENT_END_TIMEOUT: int = 6
+DEFAULT_MAX_MOVES: int = 100
+
 SUMMARY_HEADERS: list[str] = [
-    'id', 'player_one', 'player_two', 'seed', 'status', 'error', 'games_run',
+    'player_one', 'player_two', 'seed', 'status', 'error', 'games_run',
     'player_one_wins', 'ties', 'player_one_losses', 'player_one_score',
     'average_moves', 'average_duration_secs', 'log_path', 'replay_path',
 ]
+
+@dataclasses.dataclass(frozen = True)
+class Team:
+    """ A tournament participant discovered in an agent directory. """
+
+    name: str
+    agent_path: str
+
+@dataclasses.dataclass
+class Match:
+    """ One scheduled match between two discovered teams. """
+
+    player_one: Team
+    player_two: Team
+    seed: int | None = None
+    results: list[dict[str, typing.Any]] = dataclasses.field(default_factory = list)
+    status: str = 'pending'
+    error: str | None = None
+    log_path: str | None = None
+    replay_path: str | None = None
 
 def _safe_name(value: str) -> str:
     """ Convert a supplied identifier into one safe path component. """
 
     safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', value.strip()).strip('.-')
-    if len(safe_value) > 0:
+    if (len(safe_value) > 0):
         return safe_value
 
-    # Default to a standard name.
-    return 'match'
+    return 'team'
 
-def _match_args(game: chessai.core.tournament.Game, args: argparse.Namespace,
-        result_path: str, replay_path: str | None) -> list[str]:
-    """ Build the compatible match CLI arguments for one scheduled match. """
+def _agent_reference(team: Team) -> str:
+    """ Build the file-based reflection reference for a tournament agent. """
+
+    return f'{team.agent_path}:{AGENT_CLASS_NAME}'
+
+def _collect_teams(directory: str, excluded_names: set[str]) -> list[Team]:
+    """ Find valid teams in one directory, in deterministic name order. """
+
+    if (not os.path.isdir(directory)):
+        raise ValueError(f"Tournament team directory does not exist: '{directory}'.")
+
+    teams: list[Team] = []
+    for entry in sorted(os.listdir(directory)):
+        team_dir = os.path.join(directory, entry)
+        agent_path = os.path.join(team_dir, AGENT_FILENAME)
+        if ((entry in excluded_names) or (not os.path.isdir(team_dir)) or (not os.path.isfile(agent_path))):
+            continue
+
+        teams.append(Team(entry, os.path.abspath(agent_path)))
+
+    return teams
+
+def _get_teams(args: argparse.Namespace) -> list[Team]:
+    """ Discover staff and student teams and reject ambiguous team names. """
+
+    teams = _collect_teams(args.staff_dir, set(args.ignore_team))
+    teams += _collect_teams(args.submissions_dir, set(args.ignore_team))
+
+    names = [team.name for team in teams]
+    duplicate_names = sorted({name for name in names if names.count(name) > 1})
+    if (len(duplicate_names) > 0):
+        raise ValueError(f"Tournament team names must be unique: {', '.join(duplicate_names)}")
+
+    if (len(teams) < 2):
+        raise ValueError("At least two teams with tournament.py are required to run a tournament.")
+
+    return teams
+
+def _schedule_matches(teams: list[Team]) -> list[Match]:
+    """ Schedule one match for every unique pair of teams. """
+
+    matches: list[Match] = []
+    for (index, player_one) in enumerate(teams):
+        for player_two in teams[index + 1:]:
+            matches.append(Match(player_one, player_two))
+            matches.append(Match(player_two, player_one))
+
+    return matches
+
+def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None) -> list[str]:
+    """ Build the match CLI arguments for one scheduled match. """
+
+    if (match.seed is None):
+        raise ValueError('Tournament match has no assigned seed.')
 
     match_args = [
-        sys.executable, '-m', 'chessai.match',
-        '--player-one', game.player_one,
-        '--player-two', game.player_two,
+        '--player-one', _agent_reference(match.player_one),
+        '--player-two', _agent_reference(match.player_two),
         '--num-games', str(args.num_games),
-        '--seed', str(game.seed),
+        '--seed', str(match.seed),
         '--max-moves', str(args.max_moves),
         '--agent-start-timeout', str(args.agent_start_timeout),
         '--agent-end-timeout', str(args.agent_end_timeout),
         '--agent-action-timeout', str(args.agent_action_timeout),
         '--isolation', args.isolation_level,
         '--ui', 'null',
-        '--result-path', result_path,
     ]
 
     if (args.board is not None):
         match_args += ['--board', args.board]
-
-    if (args.rotate_sides):
-        match_args.append('--rotate-sides')
-
-    for raw_agent_arg in args.raw_agent_args:
-        match_args += ['--agent-arg', raw_agent_arg]
 
     if (replay_path is not None):
         match_args += ['--save-path', replay_path]
 
     return match_args
 
-def _run_tournament_match(
-        index: int,
-        game: chessai.core.tournament.Game,
-        args: argparse.Namespace,
-        ) -> chessai.core.tournament.Game:
+def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) -> Match:
     """ Run one scheduled match and attach its result or failure information. """
 
     log_path: str | None = None
     replay_path: str | None = None
     if (args.output_dir is None):
-        result_path = edq.util.dirent.get_temp_path('chessai-tournament-', '.json')
+        log_path = os.devnull
     else:
-        name = f'{index + 1:04d}'
-        if (game.id is not None):
-            name = f'{name}-{_safe_name(game.id)}'
-
+        name = f'{index + 1:04d}-{_safe_name(match.player_one.name)}-vs-{_safe_name(match.player_two.name)}'
         match_dir = os.path.join(args.output_dir, name)
         os.makedirs(match_dir, exist_ok = True)
-        result_path = os.path.join(match_dir, 'results.json')
         log_path = os.path.join(match_dir, 'match.log')
         replay_path = os.path.join(match_dir, 'game.pgn')
-        game.log_path = os.path.relpath(log_path, args.output_dir)
-        game.replay_path = os.path.relpath(replay_path, args.output_dir)
+        match.log_path = os.path.relpath(log_path, args.output_dir)
+        match.replay_path = os.path.relpath(replay_path, args.output_dir)
 
     try:
-        if (log_path is None):
-            subprocess.run(_match_args(game, args, result_path, replay_path), check = True,
-                cwd = args._root_dir, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
-        else:
-            with open(log_path, 'w', encoding = 'utf-8') as log_file:
-                subprocess.run(_match_args(game, args, result_path, replay_path), check = True,
-                    cwd = args._root_dir, stdout = log_file, stderr = subprocess.STDOUT)
+        with open(log_path, 'w', encoding = 'utf-8') as log_file:
+            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
+                results = chessai.match.bin.main(_match_args(match, args, replay_path))
 
-        raw_results = edq.util.json.load_path(result_path, strict = True)
-        game.results = raw_results
-        game.status = SUCCESS_STATUS
-        game.error = None
-    except (OSError, subprocess.SubprocessError, ValueError, TypeError) as error:
-        game.status = FAILURE_STATUS
-        game.error = str(error)
-    finally:
-        if (args.output_dir is None) and os.path.exists(result_path):
-            os.unlink(result_path)
+        match.results = [result.to_dict() for result in results]
+        match.status = SUCCESS_STATUS
+        match.error = None
+    except Exception as error:  # pylint: disable = broad-exception-caught
+        match.status = FAILURE_STATUS
+        match.error = str(error)
 
-    return game
+    return match
 
-def _run_tournament(games: list[chessai.core.tournament.Game], args: argparse.Namespace) -> None:
+def _run_tournament(matches: list[Match], args: argparse.Namespace) -> None:
     """ Run scheduled matches concurrently while preserving source order. """
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers = args.workers) as executor:
-        futures = [executor.submit(_run_tournament_match, index, game, args)
-                   for (index, game) in enumerate(games)]
+    with concurrent.futures.ProcessPoolExecutor(max_workers = args.workers) as executor:
+        futures = [executor.submit(_run_tournament_match, index, match, args)
+                   for (index, match) in enumerate(matches)]
         for (index, future) in enumerate(futures):
-            games[index] = future.result()
+            matches[index] = future.result()
 
-def run_cli(args: argparse.Namespace) -> int:
-    """ Run the CLI. """
-
-    raw_games = edq.util.json.load_path(args.path, strict = True)
-    if (not isinstance(raw_games, list)):
-        raise ValueError('Tournament data must be a JSON array of match objects.')
-
-    games = [chessai.core.tournament.Game.from_dict(raw_game) for raw_game in raw_games]
-    ids = [game.id for game in games if (game.id is not None)]
-    if (len(ids) != len(set(ids))):
-        raise ValueError('Tournament match IDs must be unique.')
-
-    # Set the tournament seed.
-    tournament_seed = random.randint(0, 2**64)
-    if (args.seed is not None):
-        tournament_seed = args.seed
-
-    # Generate seeds for each match.
-    rng = random.Random(tournament_seed)
-    for game in games:
-        game.seed = rng.randint(0, 2**64)
-
-    # Run the tournament.
-    _run_tournament(games, args)
-
-    summaries = [_summary(game, args.rotate_sides) for game in games]
-    if (args.json):
-        output = []
-        for (game, summary) in zip(games, summaries):
-            record = game.to_dict()
-            record['summary'] = summary
-            output.append(record)
-
-        print(edq.util.json.dumps(output, indent = 4))
-    else:
-        print(DELIM.join(SUMMARY_HEADERS))
-        for summary in summaries:
-            print(DELIM.join(_table_value(summary[header]) for header in SUMMARY_HEADERS))
-
-    if any((game.status == FAILURE_STATUS) for game in games):
-        return 1
-
-    return 0
-
-def _summary(game: chessai.core.tournament.Game, rotate_sides: bool) -> dict[str, typing.Any]:
+def _summary(match: Match) -> dict[str, typing.Any]:
     """ Build one flat, player-one-oriented summary record. """
 
     scores: list[float] = []
-    for (index, result) in enumerate(game.results):
-        score = float(result['score'])
-        if rotate_sides and ((index % 2) == 1):
-            score = 1 - score
+    for result in match.results:
+        scores.append(float(result['score']))
 
-        scores.append(score)
+    average_score = None
+    if (len(scores) > 0):
+        average_score = (sum(scores) / len(scores))
 
     wins = sum(math.isclose(score, 1.0) for score in scores)
     ties = sum(math.isclose(score, 0.5) for score in scores)
 
-    average_player_one_score = None
-    if (len(scores) > 0):
-        average_player_one_score = sum(scores) / len(scores)
-
-    move_counts = [len(result['history']) for result in game.results]
-    average_move_counts = None
+    move_counts = [len(result['history']) for result in match.results]
+    average_moves = None
     if (len(move_counts) > 0):
-        average_move_counts = sum(move_counts) / len(move_counts)
+        average_moves = (sum(move_counts) / len(move_counts))
 
     durations = []
-    for result in game.results:
+    for result in match.results:
         if (result['end_time'] is None):
             continue
 
-        duration_secs = (int(result['end_time']) - int(result['start_time'])) / MS_PER_SECOND
-        durations.append(duration_secs)
+        duration = (int(result['end_time']) - int(result['start_time'])) / MS_PER_SECOND
+        durations.append(duration)
 
-    average_duration_secs = None
+    average_duration = None
     if (len(durations) > 0):
-        average_duration_secs = sum(durations) / len(durations)
+        average_duration = (sum(durations) / len(durations))
 
     return {
-        'player_one': game.player_one,
-        'player_two': game.player_two,
-        'id': game.id,
-        'seed': game.seed,
-        'status': game.status,
-        'error': game.error,
-        'games_run': len(game.results),
+        'player_one': match.player_one.name,
+        'player_two': match.player_two.name,
+        'seed': match.seed,
+        'status': match.status,
+        'error': match.error,
+        'games_run': len(match.results),
         'player_one_wins': wins,
         'ties': ties,
         'player_one_losses': len(scores) - wins - ties,
-        'player_one_score': average_player_one_score,
-        'average_moves': average_move_counts,
-        'average_duration_secs': average_duration_secs,
-        'log_path': game.log_path,
-        'replay_path': game.replay_path,
+        'player_one_score': average_score,
+        'average_moves': average_moves,
+        'average_duration_secs': average_duration,
+        'log_path': match.log_path,
+        'replay_path': match.replay_path,
     }
 
 def _table_value(value: typing.Any) -> str:
-    """
-    Get a proper value to represent in a TSV table.
-    """
+    """ Get a proper value to represent in a TSV table. """
 
     if (value is None):
         return ''
 
     return str(value).replace("\t", ' ')
 
-def main(argv: list[str] | None = None) -> int:
-    """
-    Invoke a tournament.
+def run_cli(args: argparse.Namespace) -> int:
+    """ Discover teams, run their matches, and print tournament summaries. """
 
-    Will return if running the tournament was successful.
-    """
+    matches = _schedule_matches(_get_teams(args))
+    tournament_seed = args.seed if (args.seed is not None) else random.randint(0, 2**64)
+    rng = random.Random(tournament_seed)
+    for match in matches:
+        match.seed = rng.randint(0, 2**64)
+
+    if (args.output_dir is not None):
+        os.makedirs(args.output_dir, exist_ok = True)
+
+    _run_tournament(matches, args)
+    summaries = [_summary(match) for match in matches]
+    if (args.json):
+        print(edq.util.json.dumps(summaries, indent = 4))
+    else:
+        print(DELIM.join(SUMMARY_HEADERS))
+        for summary in summaries:
+            print(DELIM.join(_table_value(summary[header]) for header in SUMMARY_HEADERS))
+
+    if any((match.status == FAILURE_STATUS) for match in matches):
+        return 1
+
+    return 0
+
+def main(argv: list[str] | None = None) -> int:
+    """ Invoke a tournament. """
 
     args = _get_parser().parse_args(argv)
     if (args.workers <= 0):
         raise ValueError(f'--workers must be positive, {args.workers} was specified.')
 
-    if ((args.save_path is not None) or (args.replay_path is not None) or args.wait_for_user):
-        raise ValueError('Tournament mode manages replays itself; do not use --save-path, --replay-path, or --wait-for-input.')
-
-    args._root_dir = ROOT_DIR
     return run_cli(args)
 
 def _get_parser() -> argparse.ArgumentParser:
-    """ Get the parser. """
+    """ Get the tournament parser. """
 
-    parser = typing.cast(argparse.ArgumentParser, edq.core.argparser.get_default_parser(__doc__.strip()))
+    parser = edq.core.argparser.get_default_parser(__doc__.strip())
 
-    # Get the standard game options.
-    parser = chessai.core.game.set_cli_args(parser, None)
+    parser.add_argument('--board', type = str, default = None,
+        help = 'Play every game on this board or FEN (default: %(default)s).')
 
-    parser.add_argument('path', metavar = 'DATA_PATH',
-        action = 'store', type = str,
-        help = 'JSON file that holds the game information.')
+    parser.add_argument('--num-games', type = int, default = 1,
+        help = 'Number of games to play in every match (default: %(default)s).')
 
-    parser.add_argument('--json', dest = 'json',
-        action = 'store_true', default = False,
-        help = 'Output data as JSON instead of TSV.')
+    parser.add_argument('--seed', type = int, default = None,
+        help = 'Source seed for deterministic tournament match seeds.')
 
-    parser.add_argument('--rotate-sides', dest = 'rotate_sides', action = 'store_true',
-        help = 'Rotate player sides between games in every match.')
+    parser.add_argument('--max-moves', type = int, default = DEFAULT_MAX_MOVES,
+        help = 'Maximum total moves allowed in each game (-1 for unlimited).')
 
-    parser.add_argument('--workers', type = int, default = os.cpu_count() or 1,
+    parser.add_argument('--agent-start-timeout', type = float, default = DEFAULT_AGENT_START_TIMEOUT,
+        help = 'Maximum seconds each agent may use to start a game (default: %(default)s).')
+
+    parser.add_argument('--agent-end-timeout', type = float, default = DEFAULT_AGENT_END_TIMEOUT,
+        help = 'Maximum seconds each agent may use to finish a game (default: %(default)s).')
+
+    parser.add_argument('--agent-action-timeout', type = float, default = DEFAULT_AGENT_ACTION_TIMEOUT,
+        help = 'Maximum seconds each agent may use per action (default: %(default)s).')
+
+    parser.add_argument('--isolation', dest = 'isolation_level', choices = chessai.core.isolation.level.LEVELS,
+        default = chessai.core.isolation.level.Level.PROCESS.value,
+        help = 'Agent isolation level (default: %(default)s).')
+
+    parser.add_argument('--staff-dir', '--special-teams-dir', dest = 'staff_dir', type = str,
+        default = SPECIAL_TEAMS_DIR,
+        help = 'Directory containing staff team directories (default: %(default)s).')
+
+    parser.add_argument('--submissions-dir', dest = 'submissions_dir', type = str,
+        default = SUBMISSIONS_DIR,
+        help = 'Directory containing student submission directories (default: %(default)s).')
+
+    parser.add_argument('--ignore-team', action = 'append', default = [], metavar = 'NAME',
+        help = 'Ignore a team directory by name (may be used multiple times).')
+
+    parser.add_argument('--json', action = 'store_true', default = False,
+        help = 'Output match summaries as JSON instead of TSV.')
+
+    num_cores = os.cpu_count()
+    if num_cores is None:
+        num_cores = 1
+
+    num_cores = max(num_cores - 1, 1)
+    parser.add_argument('--workers', type = int, default = num_cores,
         help = 'Maximum number of matches to run concurrently (default: %(default)s).')
 
     parser.add_argument('--output-dir', type = str, default = None,
-        help = 'Directory in which to save per-match logs and PGN replays.')
+        help = 'Directory in which to save per-match logs, results, and PGN replays.')
 
     return parser
 
