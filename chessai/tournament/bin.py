@@ -1,6 +1,6 @@
 """
 Run a round-robin tournament between staff and student agents.
-The results of each match will be output as JSON.
+The results of each match will be output as TSV.
 """
 
 import argparse

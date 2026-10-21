@@ -323,24 +323,14 @@ class Game(abc.ABC):
             ) -> str:
         """ Returns the PGN representation of the Game. """
 
-        if (termination_reason in [chessai.core.types.TerminationReason.CHECKMATE,
-                                   chessai.core.types.TerminationReason.FORFEIT]):
-            winners = final_state.get_winners()
-            if (chessai.core.types.Color.WHITE in winners):
-                result = chessai.core.gameparser.PGNResult.WHITE_WIN
-            elif (chessai.core.types.Color.BLACK in winners):
-                result = chessai.core.gameparser.PGNResult.BLACK_WIN
-            else:
-                result = chessai.core.gameparser.PGNResult.TIE
-        elif (termination_reason in [chessai.core.types.TerminationReason.STALEMATE,
-                                     chessai.core.types.TerminationReason.INSUFFICIENT_MATERIAL,
-                                     chessai.core.types.TerminationReason.ACCEPTED_DRAW_PROPOSAL]):
-            result = chessai.core.gameparser.PGNResult.TIE
-        elif (termination_reason == chessai.core.types.TerminationReason.IN_PROGRESS):
-            result = chessai.core.gameparser.PGNResult.IN_PROGRESS
-        else:
-            result = chessai.core.gameparser.PGNResult.UNKNOWN
+        winners = final_state.get_winners()
+        winner = None
+        if (chessai.core.types.Color.WHITE in winners):
+            winner = chessai.core.types.Color.WHITE
+        elif (chessai.core.types.Color.BLACK in winners):
+            winner = chessai.core.types.Color.BLACK
 
+        result = self._termination_reason_to_pgn_result(termination_reason, winner)
         headers = chessai.core.gameparser.StandardHeaders(
                 event = self.game_info.event,
                 site = self.game_info.site,
@@ -348,10 +338,58 @@ class Game(abc.ABC):
                 game_round = self.game_info.game_round,
                 white = self.game_info.white_player,
                 black = self.game_info.black_player,
-                result = result)
+                result = result.value)
 
         return chessai.core.gameparser.to_pgn(headers, self.game_info.extra_info, type(final_state),
                                               self.game_info.start_fen, self.action_history)
+
+    def _termination_reason_to_pgn_result(self,
+            termination_reason: chessai.core.types.TerminationReason,
+            winner: chessai.core.types.Color | None) -> chessai.core.gameparser.PGNResult:
+        win_result = chessai.core.gameparser.PGNResult.UNKNOWN
+        if (winner == chessai.core.types.Color.WHITE):
+            win_result = chessai.core.gameparser.PGNResult.WHITE_WIN
+
+        if (winner == chessai.core.types.Color.BLACK):
+            win_result = chessai.core.gameparser.PGNResult.BLACK_WIN
+
+        match termination_reason:
+            # If the agent is in checkmate, the opponent won.
+            case chessai.core.types.TerminationReason.CHECKMATE:
+                return win_result
+            # Stalemate ends the game in a tie.
+            case chessai.core.types.TerminationReason.STALEMATE:
+                return chessai.core.gameparser.PGNResult.TIE
+            # Insufficient material ends the game in a tie.
+            case chessai.core.types.TerminationReason.INSUFFICIENT_MATERIAL:
+                return chessai.core.gameparser.PGNResult.TIE
+            # If the agent forfeit, the opponent won.
+            case chessai.core.types.TerminationReason.FORFEIT:
+                return win_result
+            # Agents agreed on a draw, so the game ends in a tie.
+            case chessai.core.types.TerminationReason.ACCEPTED_DRAW_PROPOSAL:
+                return chessai.core.gameparser.PGNResult.TIE
+            # The current agent crashed, so the opponent won.
+            case chessai.core.types.TerminationReason.AGENT_CRASHED:
+                return win_result
+            # The current agent timed out, so the opponent won.
+            case chessai.core.types.TerminationReason.AGENT_TIMEOUT:
+                return win_result
+            # The game timed out, so it ends in a tie.
+            case chessai.core.types.TerminationReason.GAME_TIMEOUT:
+                return chessai.core.gameparser.PGNResult.TIE
+            # The game is in progress, so there is not a winner.
+            case chessai.core.types.TerminationReason.IN_PROGRESS:
+                return chessai.core.gameparser.PGNResult.IN_PROGRESS
+            # The current agent won.
+            case chessai.core.types.TerminationReason.VARIANT_WIN:
+                return win_result
+            # The opposing agent won.
+            case chessai.core.types.TerminationReason.VARIANT_LOSS:
+                return win_result
+            # Unknown termination, so the game is a tie.
+            case chessai.core.types.TerminationReason.UNKNOWN:
+                return chessai.core.gameparser.PGNResult.UNKNOWN
 
     def process_args(self, args: argparse.Namespace) -> None:
         """ Process any special arguments from the command-line. """
