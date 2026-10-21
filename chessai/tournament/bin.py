@@ -18,7 +18,7 @@ import edq.core.argparser
 import edq.util.json
 
 import chessai.core.isolation.level
-import chessai.match.bin
+import chessai.chess.bin
 
 DELIM: str = "\t"
 FAILURE_STATUS: str = 'failed'
@@ -39,8 +39,8 @@ DEFAULT_AGENT_END_TIMEOUT: int = 6
 DEFAULT_MAX_MOVES: int = 100
 
 SUMMARY_HEADERS: list[str] = [
-    'player_one', 'player_two', 'seed', 'status', 'error', 'games_run',
-    'player_one_wins', 'ties', 'player_one_losses', 'player_one_score',
+    'white', 'black', 'seed', 'status', 'error', 'games_run',
+    'white_wins', 'ties', 'white_losses', 'white_score',
     'average_moves', 'average_duration_secs', 'log_path', 'replay_path',
 ]
 
@@ -55,8 +55,8 @@ class Team:
 class Match:
     """ One scheduled match between two discovered teams. """
 
-    player_one: Team
-    player_two: Team
+    white: Team
+    black: Team
     seed: int | None = None
     results: list[dict[str, typing.Any]] = dataclasses.field(default_factory = list)
     status: str = 'pending'
@@ -115,10 +115,10 @@ def _schedule_matches(teams: list[Team]) -> list[Match]:
     """ Schedule one match for every unique pair of teams. """
 
     matches: list[Match] = []
-    for (index, player_one) in enumerate(teams):
-        for player_two in teams[index + 1:]:
-            matches.append(Match(player_one, player_two))
-            matches.append(Match(player_two, player_one))
+    for (index, white) in enumerate(teams):
+        for black in teams[index + 1:]:
+            matches.append(Match(white, black))
+            matches.append(Match(black, white))
 
     return matches
 
@@ -129,8 +129,8 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None)
         raise ValueError('Tournament match has no assigned seed.')
 
     match_args = [
-        '--player-one', _agent_reference(match.player_one),
-        '--player-two', _agent_reference(match.player_two),
+        '--white', _agent_reference(match.white),
+        '--black', _agent_reference(match.black),
         '--num-games', str(args.num_games),
         '--seed', str(match.seed),
         '--max-moves', str(args.max_moves),
@@ -157,7 +157,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     if (args.output_dir is None):
         log_path = os.devnull
     else:
-        name = f'{index + 1:04d}-{_safe_name(match.player_one.name)}-vs-{_safe_name(match.player_two.name)}'
+        name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
         match_dir = os.path.join(args.output_dir, name)
         os.makedirs(match_dir, exist_ok = True)
         log_path = os.path.join(match_dir, 'match.log')
@@ -168,7 +168,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     try:
         with open(log_path, 'w', encoding = 'utf-8') as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
-                results = chessai.match.bin.main(_match_args(match, args, replay_path))
+                results = chessai.chess.bin.main(_match_args(match, args, replay_path))
 
         match.results = [result.to_dict() for result in results]
         match.status = SUCCESS_STATUS
@@ -189,7 +189,7 @@ def _run_tournament(matches: list[Match], args: argparse.Namespace) -> None:
             matches[index] = future.result()
 
 def _summary(match: Match) -> dict[str, typing.Any]:
-    """ Build one flat, player-one-oriented summary record. """
+    """ Build one flat summary record. """
 
     scores: list[float] = []
     for result in match.results:
@@ -220,16 +220,16 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         average_duration = (sum(durations) / len(durations))
 
     return {
-        'player_one': match.player_one.name,
-        'player_two': match.player_two.name,
+        'white': match.white.name,
+        'black': match.black.name,
         'seed': match.seed,
         'status': match.status,
         'error': match.error,
         'games_run': len(match.results),
-        'player_one_wins': wins,
+        'white_wins': wins,
         'ties': ties,
-        'player_one_losses': len(scores) - wins - ties,
-        'player_one_score': average_score,
+        'white_losses': len(scores) - wins - ties,
+        'white_score': average_score,
         'average_moves': average_moves,
         'average_duration_secs': average_duration,
         'log_path': match.log_path,

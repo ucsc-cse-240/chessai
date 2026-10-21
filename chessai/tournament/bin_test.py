@@ -38,7 +38,7 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
         ]
 
         matches = chessai.tournament.bin._schedule_matches(teams)
-        actual_matches = [(match.player_one.name, match.player_two.name) for match in matches]
+        actual_matches = [(match.white.name, match.black.name) for match in matches]
         expected_matches = [
             ('alpha', 'beta'), ('beta', 'alpha'),
             ('alpha', 'gamma'), ('gamma', 'alpha'),
@@ -62,8 +62,8 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
 
         summary = chessai.tournament.bin._summary(match)
 
-        self.assertEqual(1, summary['player_one_wins'])
-        self.assertEqual(1, summary['player_one_losses'])
-        self.assertEqual(0.5, summary['player_one_score'])
+        self.assertEqual(1, summary['white_wins'])
+        self.assertEqual(1, summary['white_losses'])
+        self.assertEqual(0.5, summary['white_score'])
         self.assertEqual(1.5, summary['average_moves'])
         self.assertEqual(2.5, summary['average_duration_secs'])
