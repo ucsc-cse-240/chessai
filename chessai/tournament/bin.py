@@ -4,39 +4,41 @@ The results of each match will be output as TSV.
 """
 
 import argparse
-import concurrent.futures
 import contextlib
 import dataclasses
+import enum
+import logging
 import math
+import multiprocessing.pool
 import os
 import random
 import re
+import subprocess
 import sys
 import typing
 
 import edq.core.argparser
+import edq.util.dirent
 import edq.util.json
 
 import chessai.core.isolation.level
 import chessai.chess.bin
-
-DELIM: str = "\t"
-FAILURE_STATUS: str = 'failed'
-SUCCESS_STATUS: str = 'success'
-MS_PER_SECOND: int = 1000
-
-AGENT_FILENAME: str = 'tournament.py'
-AGENT_CLASS_NAME: str = 'TournamentAgent'
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
 SPECIAL_TEAMS_DIR: str = os.path.join(ROOT_DIR, 'special_teams')
 SUBMISSIONS_DIR: str = os.path.join(ROOT_DIR, '_submissions')
 
+AGENT_FILENAME: str = 'tournament.py'
+AGENT_CLASS_NAME: str = 'TournamentAgent'
+
 DEFAULT_AGENT_ACTION_TIMEOUT: int = 3
 DEFAULT_AGENT_START_TIMEOUT: int = 15
 DEFAULT_AGENT_END_TIMEOUT: int = 6
 DEFAULT_MAX_MOVES: int = 100
+
+DELIM: str = "\t"
+MS_PER_SECOND: int = 1000
 
 SUMMARY_HEADERS: list[str] = [
     'white', 'black', 'seed', 'status', 'error', 'games_run',
@@ -44,25 +46,51 @@ SUMMARY_HEADERS: list[str] = [
     'average_moves', 'average_duration_secs', 'log_path', 'replay_path',
 ]
 
-@dataclasses.dataclass(frozen = True)
+@dataclasses.dataclass
 class Team:
     """ A tournament participant discovered in an agent directory. """
 
     name: str
+    """ The name of the team. """
+
     agent_path: str
+    """ The absolute path to the agent for this team. """
+
+class MatchStatus(str, enum.Enum):
+    """ An enum representing the status of a match. """
+
+    FAILURE = 'failed'
+    RUNNING = 'running'
+    SCHEDULED = 'scheduled'
+    SUCCESS = 'success'
 
 @dataclasses.dataclass
 class Match:
     """ One scheduled match between two discovered teams. """
 
     white: Team
+    """ The team that will play as white. """
+
     black: Team
+    """ The team that will play as black. """
+
     seed: int | None = None
+    """ The seed for the match. """
+
     results: list[dict[str, typing.Any]] = dataclasses.field(default_factory = list)
-    status: str = 'pending'
+    """ The results of playing each match. """
+
+    status: MatchStatus = MatchStatus.SCHEDULED
+    """ The current status of the match. """
+
     error: str | None = None
+    """ The matches error, which is only set if the status is a failure. """
+
     log_path: str | None = None
+    """ The path to store the logs for the game. """
+
     replay_path: str | None = None
+    """ The path to save the match replay. """
 
 def _safe_name(value: str) -> str:
     """ Convert a supplied identifier into one safe path component. """
@@ -86,9 +114,15 @@ def _collect_teams(directory: str, excluded_names: set[str]) -> list[Team]:
 
     teams: list[Team] = []
     for entry in sorted(os.listdir(directory)):
+        if (entry in excluded_names):
+            continue
+
         team_dir = os.path.join(directory, entry)
+        if (not os.path.isdir(team_dir)):
+            continue
+
         agent_path = os.path.join(team_dir, AGENT_FILENAME)
-        if ((entry in excluded_names) or (not os.path.isdir(team_dir)) or (not os.path.isfile(agent_path))):
+        if (not os.path.isfile(agent_path)):
             continue
 
         teams.append(Team(entry, os.path.abspath(agent_path)))
@@ -107,12 +141,12 @@ def _get_teams(args: argparse.Namespace) -> list[Team]:
         raise ValueError(f"Tournament team names must be unique: {', '.join(duplicate_names)}")
 
     if (len(teams) < 2):
-        raise ValueError("At least two teams with tournament.py are required to run a tournament.")
+        raise ValueError(f"At least two teams are required to run a tournament, got {len(teams)}")
 
     return teams
 
 def _schedule_matches(teams: list[Team]) -> list[Match]:
-    """ Schedule one match for every unique pair of teams. """
+    """ Schedule matches for every unique pair of teams. """
 
     matches: list[Match] = []
     for (index, white) in enumerate(teams):
@@ -125,14 +159,13 @@ def _schedule_matches(teams: list[Team]) -> list[Match]:
 def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None) -> list[str]:
     """ Build the match CLI arguments for one scheduled match. """
 
-    if (match.seed is None):
-        raise ValueError('Tournament match has no assigned seed.')
-
     match_args = [
+        'python3',
+        '-m',
+        'chessai.tournament.bin',
         '--white', _agent_reference(match.white),
         '--black', _agent_reference(match.black),
         '--num-games', str(args.num_games),
-        '--seed', str(match.seed),
         '--max-moves', str(args.max_moves),
         '--agent-start-timeout', str(args.agent_start_timeout),
         '--agent-end-timeout', str(args.agent_end_timeout),
@@ -146,6 +179,9 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None)
 
     if (replay_path is not None):
         match_args += ['--save-path', replay_path]
+
+    if (match.seed is not None):
+        match_args += ['--seed', str(match.seed)]
 
     return match_args
 
@@ -168,13 +204,15 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     try:
         with open(log_path, 'w', encoding = 'utf-8') as log_file:
             with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
-                results = chessai.chess.bin.main(_match_args(match, args, replay_path))
+                match.status = MatchStatus.RUNNING
+                result = subprocess.run(args, capture_output = True, shell = False, cwd = match_dir, check = True, text = True)
 
-        match.results = [result.to_dict() for result in results]
-        match.status = SUCCESS_STATUS
+        new_result = edq.util.json.loads(result.stdout, strict = True)
+        match.results = new_result
+        match.status = MatchStatus.SUCCESS
         match.error = None
     except Exception as error:  # pylint: disable = broad-exception-caught
-        match.status = FAILURE_STATUS
+        match.status = MatchStatus.FAILURE
         match.error = str(error)
 
     return match
@@ -182,11 +220,17 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
 def _run_tournament(matches: list[Match], args: argparse.Namespace) -> None:
     """ Run scheduled matches concurrently while preserving source order. """
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers = args.workers) as executor:
-        futures = [executor.submit(_run_tournament_match, index, match, args)
-                   for (index, match) in enumerate(matches)]
-        for (index, future) in enumerate(futures):
-            matches[index] = future.result()
+    with multiprocessing.pool.ThreadPool() as pool:
+        work_results = []
+        for (index, match) in enumerate(matches):
+            work_results.append(pool.apply_async(_run_tournament_match, (index, match, args)))
+
+        for work_result in work_results:
+            work_result.wait()
+            try:
+                work_result.get()
+            except Exception as error:  # pylint: disable = broad-exception-caught
+                logging.warning("Failed to run match '%s'.", error)
 
 def _summary(match: Match) -> dict[str, typing.Any]:
     """ Build one flat summary record. """
@@ -248,7 +292,11 @@ def run_cli(args: argparse.Namespace) -> int:
     """ Discover teams, run their matches, and print tournament summaries. """
 
     matches = _schedule_matches(_get_teams(args))
-    tournament_seed = args.seed if (args.seed is not None) else random.randint(0, 2**64)
+
+    tournament_seed = random.randint(0, 2**64)
+    if (args.seed is not None):
+        tournament_seed = args.seed
+
     rng = random.Random(tournament_seed)
     for match in matches:
         match.seed = rng.randint(0, 2**64)
@@ -265,7 +313,7 @@ def run_cli(args: argparse.Namespace) -> int:
         for summary in summaries:
             print(DELIM.join(_table_value(summary[header]) for header in SUMMARY_HEADERS))
 
-    if any((match.status == FAILURE_STATUS) for match in matches):
+    if any((match.status == MatchStatus.FAILURE) for match in matches):
         return 1
 
     return 0

@@ -57,7 +57,7 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
                 {'score': 1.0, 'history': [None], 'start_time': 1000, 'end_time': 3000},
                 {'score': 0.0, 'history': [None, None], 'start_time': 5000, 'end_time': 8000},
             ],
-            status = chessai.tournament.bin.SUCCESS_STATUS,
+            status = chessai.tournament.bin.MatchStatus.SUCCESS,
         )
 
         summary = chessai.tournament.bin._summary(match)
