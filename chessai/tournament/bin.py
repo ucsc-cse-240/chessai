@@ -156,13 +156,12 @@ def _schedule_matches(teams: list[Team]) -> list[Match]:
 
     return matches
 
-def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None) -> list[str]:
+def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None, results_path: str) -> list[str]:
     """ Build the match CLI arguments for one scheduled match. """
 
     match_args = [
-        'python3',
-        '-m',
-        'chessai.tournament.bin',
+        sys.executable,  # same interpreter/venv as the parent, instead of bare 'python3'
+        '-m', 'chessai.tournament.bin',
         '--white', _agent_reference(match.white),
         '--black', _agent_reference(match.black),
         '--num-games', str(args.num_games),
@@ -172,6 +171,7 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None)
         '--agent-action-timeout', str(args.agent_action_timeout),
         '--isolation', args.isolation_level,
         '--ui', 'null',
+        '--results-path', results_path,
     ]
 
     if (args.board is not None):
@@ -188,32 +188,48 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None)
 def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) -> Match:
     """ Run one scheduled match and attach its result or failure information. """
 
-    log_path: str | None = None
-    replay_path: str | None = None
-    if (args.output_dir is None):
+    with contextlib.ExitStack() as stack:
+        replay_path: str | None = None
         log_path = os.devnull
-    else:
-        name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
-        match_dir = os.path.join(args.output_dir, name)
-        os.makedirs(match_dir, exist_ok = True)
-        log_path = os.path.join(match_dir, 'match.log')
-        replay_path = os.path.join(match_dir, 'game.pgn')
-        match.log_path = os.path.relpath(log_path, args.output_dir)
-        match.replay_path = os.path.relpath(replay_path, args.output_dir)
 
-    try:
-        with open(log_path, 'w', encoding = 'utf-8') as log_file:
-            with contextlib.redirect_stdout(log_file), contextlib.redirect_stderr(log_file):
-                match.status = MatchStatus.RUNNING
-                result = subprocess.run(args, capture_output = True, shell = False, cwd = match_dir, check = True, text = True)
+        if (args.output_dir is None):
+            work_dir = stack.enter_context(edq.util.dirent.get_temp_dir('chessai-'))
+        else:
+            name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
+            work_dir = os.path.join(args.output_dir, name)
+            os.makedirs(work_dir, exist_ok = True)
 
-        new_result = edq.util.json.loads(result.stdout, strict = True)
-        match.results = new_result
-        match.status = MatchStatus.SUCCESS
-        match.error = None
-    except Exception as error:  # pylint: disable = broad-exception-caught
-        match.status = MatchStatus.FAILURE
-        match.error = str(error)
+            log_path = os.path.join(work_dir, 'match.log')
+            replay_path = os.path.join(work_dir, 'game.pgn')
+            match.log_path = os.path.relpath(log_path, args.output_dir)
+            match.replay_path = os.path.relpath(replay_path, args.output_dir)
+
+        results_path = os.path.join(work_dir, 'results.json')
+        command = _match_args(match, args, replay_path, results_path)
+
+        try:
+            match.status = MatchStatus.RUNNING
+            with open(log_path, 'w', encoding = 'utf-8') as log_file:
+                subprocess.run(command,
+                    stdin = subprocess.DEVNULL,
+                    stdout = log_file,
+                    stderr = subprocess.STDOUT,  # interleave both streams in order
+                    shell = False,
+                    check = True,
+                    cwd = ROOT_DIR,
+                )
+
+            with open(results_path, 'r', encoding = 'utf-8') as file:
+                match.results = edq.util.json.loads(file.read(), strict = True)
+
+            match.status = MatchStatus.SUCCESS
+            match.error = None
+        except subprocess.CalledProcessError as error:
+            match.status = MatchStatus.FAILURE
+            match.error = f"Match exited with code {error.returncode} (see log)."
+        except Exception as error:  # pylint: disable = broad-exception-caught
+            match.status = MatchStatus.FAILURE
+            match.error = str(error)
 
     return match
 
