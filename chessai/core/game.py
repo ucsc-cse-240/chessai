@@ -574,8 +574,14 @@ class Game(abc.ABC):
         if ((not self._is_replay) and (self._save_path is not None)):
             logging.info("Saving results to '%s'.", self._save_path)
 
+            # Save the PGN.
             pgn = self.to_pgn(state, result.termination_reason)
             edq.util.dirent.write_file(self._save_path, pgn)
+
+            # Save the raw results.
+            raw_result_base_path, _ = os.path.splitext(self._save_path)
+            raw_result_path = raw_result_base_path + '.json'
+            edq.util.json.dump_path(result, raw_result_path)
 
         return result
 

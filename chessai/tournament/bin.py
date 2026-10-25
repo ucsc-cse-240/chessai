@@ -160,7 +160,7 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None,
     """ Build the match CLI arguments for one scheduled match. """
 
     match_args = [
-        sys.executable,  # same interpreter/venv as the parent, instead of bare 'python3'
+        sys.executable,
         '-m', 'chessai.tournament.bin',
         '--white', _agent_reference(match.white),
         '--black', _agent_reference(match.black),
@@ -204,7 +204,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
             match.log_path = os.path.relpath(log_path, args.output_dir)
             match.replay_path = os.path.relpath(replay_path, args.output_dir)
 
-        results_path = os.path.join(work_dir, 'results.json')
+        results_path = os.path.join(work_dir, 'game.json')
         command = _match_args(match, args, replay_path, results_path)
 
         try:
@@ -213,7 +213,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
                 subprocess.run(command,
                     stdin = subprocess.DEVNULL,
                     stdout = log_file,
-                    stderr = subprocess.STDOUT,  # interleave both streams in order
+                    stderr = subprocess.STDOUT,
                     shell = False,
                     check = True,
                     cwd = ROOT_DIR,
