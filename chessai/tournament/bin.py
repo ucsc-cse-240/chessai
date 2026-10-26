@@ -63,36 +63,48 @@ class MatchStatus(str, enum.Enum):
     SCHEDULED = 'scheduled'
     SUCCESS = 'success'
 
-@dataclasses.dataclass
-class Match:
+class Match(edq.util.serial.DictConverter):
     """ One scheduled match between two discovered teams. """
 
-    white: Team
-    """ The team that will play as white. """
+    def __init__(self,
+            white: Team,
+            black: Team,
+            seed: int | None = None,
+            results: list[chessai.core.game.GameResult] | None = None,
+            status: MatchStatus = MatchStatus.SCHEDULED,
+            error: str | None = None,
+            log_path: str | None = None,
+            save_path: str | None = None,
+            results_path: str | None = None) -> None:
+        self.white: Team = white
+        """ The team that will play as white. """
 
-    black: Team
-    """ The team that will play as black. """
+        self.black: Team = black
+        """ The team that will play as black. """
 
-    seed: int | None = None
-    """ The seed for the match. """
+        self.seed: int | None = seed
+        """ The seed for the match. """
 
-    results: list[dict[str, typing.Any]] = dataclasses.field(default_factory = list)
-    """ The results of playing each match. """
+        if (results is None):
+            results = []
 
-    status: MatchStatus = MatchStatus.SCHEDULED
-    """ The current status of the match. """
+        self.results: list[chessai.core.game.GameResult] = results
+        """ The results of playing each match. """
 
-    error: str | None = None
-    """ The matches error, which is only set if the status is a failure. """
+        self.status: MatchStatus = status
+        """ The current status of the match. """
 
-    log_path: str | None = None
-    """ The path to store the logs for the game. """
+        self.error: str | None = error
+        """ The matches error, which is only set if the status is a failure. """
 
-    save_path: str | None = None
-    """ The path to save the match replay. """
+        self.log_path: str | None = log_path
+        """ The path to store the logs for the game. """
 
-    results_path: str | None = None
-    """ The path to save the raw match results. """
+        self.save_path: str | None = save_path
+        """ The path to save the match replay. """
+
+        self.results_path: str | None = results_path
+        """ The path to save the raw match results. """
 
 def _safe_name(value: str) -> str:
     """ Convert a supplied identifier into one safe path component. """
@@ -221,7 +233,8 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
             )
 
         with open(results_path, 'r', encoding = 'utf-8') as results_file:
-            match.results = edq.util.json.loads(results_file.read(), strict = True)
+            result = chessai.core.game.GameResult.from_dict(edq.util.json.loads(results_file.read(), strict = True))
+            match.results.append(result)
 
         match.status = MatchStatus.SUCCESS
         match.error = None
@@ -254,7 +267,7 @@ def _summary(match: Match) -> dict[str, typing.Any]:
 
     scores: list[float] = []
     for result in match.results:
-        scores.append(float(result['score']))
+        scores.append(result.score)
 
     average_score = None
     if (len(scores) > 0):
@@ -263,17 +276,17 @@ def _summary(match: Match) -> dict[str, typing.Any]:
     wins = sum(math.isclose(score, 1.0) for score in scores)
     ties = sum(math.isclose(score, 0.5) for score in scores)
 
-    move_counts = [len(result['history']) for result in match.results]
+    move_counts = [len(result.history) for result in match.results]
     average_moves = None
     if (len(move_counts) > 0):
         average_moves = (sum(move_counts) / len(move_counts))
 
     durations = []
     for result in match.results:
-        if (result['end_time'] is None):
+        if (result.end_time is None):
             continue
 
-        duration = (int(result['end_time']) - int(result['start_time'])) / MS_PER_SECOND
+        duration = (result.end_time - result.start_time) / MS_PER_SECOND
         durations.append(duration)
 
     average_duration = None
