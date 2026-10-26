@@ -4,7 +4,6 @@ The results of each match will be output as TSV.
 """
 
 import argparse
-import contextlib
 import dataclasses
 import enum
 import logging
@@ -89,8 +88,11 @@ class Match:
     log_path: str | None = None
     """ The path to store the logs for the game. """
 
-    replay_path: str | None = None
+    save_path: str | None = None
     """ The path to save the match replay. """
+
+    results_path: str | None = None
+    """ The path to save the raw match results. """
 
 def _safe_name(value: str) -> str:
     """ Convert a supplied identifier into one safe path component. """
@@ -156,14 +158,14 @@ def _schedule_matches(teams: list[Team]) -> list[Match]:
 
     return matches
 
-def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None, results_path: str) -> list[str]:
+def _match_args(match: Match, args: argparse.Namespace, save_path: str | None, results_path: str) -> list[str]:
     """ Build the match CLI arguments for one scheduled match. """
 
     match_args = [
         sys.executable,
-        '-m', 'chessai.tournament.bin',
-        '--white', _agent_reference(match.white),
-        '--black', _agent_reference(match.black),
+        '-m', 'chessai.chess.bin',
+        '--white-team', _agent_reference(match.white),
+        '--black-team', _agent_reference(match.black),
         '--num-games', str(args.num_games),
         '--max-moves', str(args.max_moves),
         '--agent-start-timeout', str(args.agent_start_timeout),
@@ -177,8 +179,8 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None,
     if (args.board is not None):
         match_args += ['--board', args.board]
 
-    if (replay_path is not None):
-        match_args += ['--save-path', replay_path]
+    if (save_path is not None):
+        match_args += ['--save-path', save_path]
 
     if (match.seed is not None):
         match_args += ['--seed', str(match.seed)]
@@ -188,48 +190,47 @@ def _match_args(match: Match, args: argparse.Namespace, replay_path: str | None,
 def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) -> Match:
     """ Run one scheduled match and attach its result or failure information. """
 
-    with contextlib.ExitStack() as stack:
-        replay_path: str | None = None
-        log_path = os.devnull
+    save_path: str | None = None
+    log_path = os.devnull
 
-        if (args.output_dir is None):
-            work_dir = stack.enter_context(edq.util.dirent.get_temp_dir('chessai-'))
-        else:
-            name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
-            work_dir = os.path.join(args.output_dir, name)
-            os.makedirs(work_dir, exist_ok = True)
+    if (args.output_dir is None):
+        work_dir = edq.util.dirent.get_temp_dir('chessai-')
+    else:
+        name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
+        work_dir = os.path.join(args.output_dir, name)
+        os.makedirs(work_dir, exist_ok = True)
 
-            log_path = os.path.join(work_dir, 'match.log')
-            replay_path = os.path.join(work_dir, 'game.pgn')
-            match.log_path = os.path.relpath(log_path, args.output_dir)
-            match.replay_path = os.path.relpath(replay_path, args.output_dir)
+        log_path = os.path.join(work_dir, 'match.log')
+        save_path = os.path.join(work_dir, 'game.pgn')
+        match.log_path = os.path.relpath(log_path, args.output_dir)
+        match.save_path = os.path.relpath(save_path, args.output_dir)
 
-        results_path = os.path.join(work_dir, 'game.json')
-        command = _match_args(match, args, replay_path, results_path)
+    results_path = os.path.join(work_dir, 'game.json')
+    command = _match_args(match, args, save_path, results_path)
 
-        try:
-            match.status = MatchStatus.RUNNING
-            with open(log_path, 'w', encoding = 'utf-8') as log_file:
-                subprocess.run(command,
-                    stdin = subprocess.DEVNULL,
-                    stdout = log_file,
-                    stderr = subprocess.STDOUT,
-                    shell = False,
-                    check = True,
-                    cwd = ROOT_DIR,
-                )
+    try:
+        match.status = MatchStatus.RUNNING
+        with open(log_path, 'w', encoding = 'utf-8') as log_file:
+            subprocess.run(command,
+                stdin = subprocess.DEVNULL,
+                stdout = log_file,
+                stderr = subprocess.STDOUT,
+                shell = False,
+                check = True,
+                cwd = ROOT_DIR,
+            )
 
-            with open(results_path, 'r', encoding = 'utf-8') as file:
-                match.results = edq.util.json.loads(file.read(), strict = True)
+        with open(results_path, 'r', encoding = 'utf-8') as results_file:
+            match.results = edq.util.json.loads(results_file.read(), strict = True)
 
-            match.status = MatchStatus.SUCCESS
-            match.error = None
-        except subprocess.CalledProcessError as error:
-            match.status = MatchStatus.FAILURE
-            match.error = f"Match exited with code {error.returncode} (see log)."
-        except Exception as error:  # pylint: disable = broad-exception-caught
-            match.status = MatchStatus.FAILURE
-            match.error = str(error)
+        match.status = MatchStatus.SUCCESS
+        match.error = None
+    except subprocess.CalledProcessError as error:
+        match.status = MatchStatus.FAILURE
+        match.error = f"Match exited with code {error.returncode} (see log)."
+    except Exception as error:  # pylint: disable = broad-exception-caught
+        match.status = MatchStatus.FAILURE
+        match.error = str(error)
 
     return match
 
@@ -293,7 +294,7 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         'average_moves': average_moves,
         'average_duration_secs': average_duration,
         'log_path': match.log_path,
-        'replay_path': match.replay_path,
+        'replay_path': match.save_path,
     }
 
 def _table_value(value: typing.Any) -> str:

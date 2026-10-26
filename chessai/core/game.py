@@ -243,6 +243,7 @@ class Game(abc.ABC):
     def __init__(self,
                  game_info: GameInfo,
                  save_path: str | None = None,
+                 results_path: str | None = None,
                  is_replay: bool = False,
                  initial_actions: list[chessai.core.action.Action] | None = None,
                  action_history: list[chessai.core.action.Action] | None = None,
@@ -252,7 +253,10 @@ class Game(abc.ABC):
         """ The core information about this game. """
 
         self._save_path: str | None = save_path
-        """ Where to save the results of this game. """
+        """ Where to save the PGN results of this game. """
+
+        self._results_path: str | None = results_path
+        """ Where to save the raw results of this game. """
 
         self._is_replay: bool = is_replay
         """
@@ -281,6 +285,7 @@ class Game(abc.ABC):
                  state_class: typing.Type[chessai.core.gamestate.GameState],
                  game_info: GameInfo,
                  save_path: str | None = None,
+                 results_path: str | None = None,
                  **kwargs: typing.Any) -> typing.Optional['Game']:
         """
         Create a Game from a PGN.
@@ -311,6 +316,7 @@ class Game(abc.ABC):
         return cls(
             game_info = game_info,
             save_path = save_path,
+            results_path = results_path,
             is_replay = True,
             initial_actions = parsed_pgn.initial_actions,
             expected_result = parsed_pgn.result,
@@ -578,10 +584,9 @@ class Game(abc.ABC):
             pgn = self.to_pgn(state, result.termination_reason)
             edq.util.dirent.write_file(self._save_path, pgn)
 
+        if ((not self._is_replay) and (self._results_path is not None)):
             # Save the raw results.
-            raw_result_base_path, _ = os.path.splitext(self._save_path)
-            raw_result_path = raw_result_base_path + '.json'
-            edq.util.json.dump_path(result, raw_result_path)
+            edq.util.json.dump_path(result, self._results_path)
 
         return result
 
@@ -647,6 +652,10 @@ def set_cli_args(parser: argparse.ArgumentParser, default_board: str | None = No
             help = ('If specified, write the result of this game to the specified location.'
                     + ' This file can be replayed with `--replay-path`.'))
 
+    parser.add_argument('--results-path', dest = 'results_path',
+            action = 'store', type = str, default = None,
+            help = ('If specified, write the raw result of this game to the specified location.'))
+
     parser.add_argument('--replay-path', dest = 'replay_path',
             action = 'store', type = str, default = None,
             help = ('If specified, replay the game whose result was saved at the specified path with `--save-path`.'
@@ -694,6 +703,7 @@ def init_from_args(
     agent_infos = _parse_agent_infos(agents, args.raw_agent_args, base_agent_infos)
 
     base_save_path = args.save_path
+    base_results_path = args.results_path
 
     all_fens: list[str] = []
     all_agent_infos = []
@@ -755,15 +765,22 @@ def init_from_args(
             parts = os.path.splitext(save_path)
             save_path = f"{parts[0]}_{i:03d}{parts[1]}"
 
+        # Suffix the results path if there is more than one game.
+        results_path = base_results_path
+        if ((results_path is not None) and (args.num_games > 1)):
+            parts = os.path.splitext(results_path)
+            results_path = f"{parts[0]}_{i:03d}{parts[1]}"
+
         if (args.replay_path is None):
             game_args = {
                 'game_info': game_info,
                 'save_path': save_path,
+                'results_path': results_path,
             }
 
             game = game_class(**game_args)
         else:
-            raw_game = game_class.from_pgn(args.replay_path, state_class, game_info, save_path)
+            raw_game = game_class.from_pgn(args.replay_path, state_class, game_info, save_path, results_path)
             if (raw_game is None):
                 raise ValueError(f"Failed to initialize game number {i} from the PGN: '{args.replay_path}'.")
 
