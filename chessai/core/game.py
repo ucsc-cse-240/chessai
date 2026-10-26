@@ -586,7 +586,7 @@ class Game(abc.ABC):
 
         if ((not self._is_replay) and (self._results_path is not None)):
             # Save the raw results.
-            edq.util.json.dump_path(result, self._results_path)
+            edq.util.json.dump_path(result.to_dict(), self._results_path)
 
         return result
 

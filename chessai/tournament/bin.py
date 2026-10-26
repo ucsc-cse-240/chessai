@@ -19,9 +19,10 @@ import typing
 import edq.core.argparser
 import edq.util.dirent
 import edq.util.json
+import edq.util.serial
 
+import chessai.core.game
 import chessai.core.isolation.level
-import chessai.chess.bin
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
@@ -250,7 +251,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
 def _run_tournament(matches: list[Match], args: argparse.Namespace) -> None:
     """ Run scheduled matches concurrently while preserving source order. """
 
-    with multiprocessing.pool.ThreadPool() as pool:
+    with multiprocessing.pool.ThreadPool(args.workers) as pool:
         work_results = []
         for (index, match) in enumerate(matches):
             work_results.append(pool.apply_async(_run_tournament_match, (index, match, args)))
@@ -297,7 +298,7 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         'white': match.white.name,
         'black': match.black.name,
         'seed': match.seed,
-        'status': match.status,
+        'status': match.status.value,
         'error': match.error,
         'games_run': len(match.results),
         'white_wins': wins,
