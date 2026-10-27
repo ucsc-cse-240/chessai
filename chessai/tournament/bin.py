@@ -4,7 +4,6 @@ The results of each match will be output as TSV.
 """
 
 import argparse
-import dataclasses
 import enum
 import logging
 import math
@@ -21,6 +20,7 @@ import edq.util.dirent
 import edq.util.json
 import edq.util.serial
 
+import chessai.core.agentinfo
 import chessai.core.game
 import chessai.core.isolation.level
 
@@ -46,16 +46,6 @@ SUMMARY_HEADERS: list[str] = [
     'average_moves', 'average_duration_secs', 'log_path', 'replay_path',
 ]
 
-@dataclasses.dataclass
-class Team:
-    """ A tournament participant discovered in an agent directory. """
-
-    name: str
-    """ The name of the team. """
-
-    agent_path: str
-    """ The absolute path to the agent for this team. """
-
 class MatchStatus(str, enum.Enum):
     """ An enum representing the status of a match. """
 
@@ -68,8 +58,8 @@ class Match(edq.util.serial.DictConverter):
     """ One scheduled match between two discovered teams. """
 
     def __init__(self,
-            white: Team,
-            black: Team,
+            white: chessai.core.agentinfo.AgentInfo,
+            black: chessai.core.agentinfo.AgentInfo,
             seed: int | None = None,
             results: list[chessai.core.game.GameResult] | None = None,
             status: MatchStatus = MatchStatus.SCHEDULED,
@@ -77,10 +67,10 @@ class Match(edq.util.serial.DictConverter):
             log_path: str | None = None,
             save_path: str | None = None,
             results_path: str | None = None) -> None:
-        self.white: Team = white
+        self.white: chessai.core.agentinfo.AgentInfo = white
         """ The team that will play as white. """
 
-        self.black: Team = black
+        self.black: chessai.core.agentinfo.AgentInfo = black
         """ The team that will play as black. """
 
         self.seed: int | None = seed
@@ -107,27 +97,31 @@ class Match(edq.util.serial.DictConverter):
         self.results_path: str | None = results_path
         """ The path to save the raw match results. """
 
-def _safe_name(value: str) -> str:
+def _display_name(team: chessai.util.reflection.Reference) -> str:
     """ Convert a supplied identifier into one safe path component. """
 
-    safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', value.strip()).strip('.-')
+    display_name = team.short_name
+    if (team.file_path is not None):
+        display_name = os.path.basename(os.path.dirname(team.file_path)) + '_' + display_name
+
+    safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', display_name.strip()).strip('.-')
     if (len(safe_value) > 0):
         return safe_value
 
     return 'team'
 
-def _agent_reference(team: Team) -> str:
+def _agent_reference(agent_path: str) -> str:
     """ Build the file-based reflection reference for a tournament agent. """
 
-    return f'{team.agent_path}:{AGENT_CLASS_NAME}'
+    return f"{agent_path}:{AGENT_CLASS_NAME}"
 
-def _collect_teams(directory: str, excluded_names: set[str]) -> list[Team]:
+def _collect_teams(directory: str, excluded_names: set[str]) -> list[chessai.core.agentinfo.AgentInfo]:
     """ Find valid teams in one directory, in deterministic name order. """
 
     if (not os.path.isdir(directory)):
         raise ValueError(f"Tournament team directory does not exist: '{directory}'.")
 
-    teams: list[Team] = []
+    teams: list[chessai.core.agentinfo.AgentInfo] = []
     for entry in sorted(os.listdir(directory)):
         if (entry in excluded_names):
             continue
@@ -136,31 +130,33 @@ def _collect_teams(directory: str, excluded_names: set[str]) -> list[Team]:
         if (not os.path.isdir(team_dir)):
             continue
 
-        agent_path = os.path.join(team_dir, AGENT_FILENAME)
+        agent_path = os.path.abspath(os.path.join(team_dir, AGENT_FILENAME))
         if (not os.path.isfile(agent_path)):
             continue
 
-        teams.append(Team(entry, os.path.abspath(agent_path)))
+        teams.append(chessai.core.agentinfo.AgentInfo(name = _agent_reference(agent_path)))
 
     return teams
 
-def _get_teams(args: argparse.Namespace) -> list[Team]:
+def _get_teams(args: argparse.Namespace) -> list[chessai.core.agentinfo.AgentInfo]:
     """ Discover staff and student teams and reject ambiguous team names. """
 
-    teams = _collect_teams(args.staff_dir, set(args.ignore_team))
-    teams += _collect_teams(args.submissions_dir, set(args.ignore_team))
+    teams = []
+    if (os.path.isdir(args.staff_dir)):
+        teams += _collect_teams(args.staff_dir, set(args.ignore_team))
 
-    names = [team.name for team in teams]
-    duplicate_names = sorted({name for name in names if names.count(name) > 1})
-    if (len(duplicate_names) > 0):
-        raise ValueError(f"Tournament team names must be unique: {', '.join(duplicate_names)}")
+    if (os.path.isdir(args.submissions_dir)):
+        teams += _collect_teams(args.submissions_dir, set(args.ignore_team))
+
+    for team in args.include_team:
+        teams.append(chessai.core.agentinfo.AgentInfo(name = team))
 
     if (len(teams) < 2):
         raise ValueError(f"At least two teams are required to run a tournament, got {len(teams)}")
 
     return teams
 
-def _schedule_matches(teams: list[Team]) -> list[Match]:
+def _schedule_matches(teams: list[chessai.core.agentinfo.AgentInfo]) -> list[Match]:
     """ Schedule matches for every unique pair of teams. """
 
     matches: list[Match] = []
@@ -177,8 +173,8 @@ def _match_args(match: Match, args: argparse.Namespace, save_path: str | None, r
     match_args = [
         sys.executable,
         '-m', 'chessai.chess.bin',
-        '--white-team', _agent_reference(match.white),
-        '--black-team', _agent_reference(match.black),
+        '--white-team', str(match.white.name),
+        '--black-team', str(match.black.name),
         '--num-games', str(args.num_games),
         '--max-moves', str(args.max_moves),
         '--agent-start-timeout', str(args.agent_start_timeout),
@@ -209,7 +205,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     if (args.output_dir is None):
         work_dir = edq.util.dirent.get_temp_dir('chessai-')
     else:
-        name = f'{index + 1:04d}-{_safe_name(match.white.name)}-vs-{_safe_name(match.black.name)}'
+        name = f'{index + 1:04d}-{_display_name(match.white.name)}-vs-{_display_name(match.black.name)}'
         work_dir = os.path.join(args.output_dir, name)
         os.makedirs(work_dir, exist_ok = True)
 
@@ -296,8 +292,8 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         average_duration = (sum(durations) / len(durations))
 
     return {
-        'white': match.white.name,
-        'black': match.black.name,
+        'white': _display_name(match.white.name),
+        'black': _display_name(match.black.name),
         'seed': match.seed,
         'status': match.status.value,
         'error': match.error,
@@ -396,6 +392,9 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--submissions-dir', dest = 'submissions_dir', type = str,
         default = SUBMISSIONS_DIR,
         help = 'Directory containing student submission directories (default: %(default)s).')
+
+    parser.add_argument('--include-team', action = 'append', default = [], metavar = 'NAME',
+        help = 'Include a team by name, overrides --ignore-team (may be used multiple times).')
 
     parser.add_argument('--ignore-team', action = 'append', default = [], metavar = 'NAME',
         help = 'Ignore a team directory by name (may be used multiple times).')
