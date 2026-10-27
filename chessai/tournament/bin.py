@@ -250,6 +250,15 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
 def _run_tournament(matches: list[Match], args: argparse.Namespace) -> None:
     """ Run scheduled matches concurrently while preserving source order. """
 
+    tournament_seed = random.randint(0, 2**64)
+    if (args.seed is not None):
+        tournament_seed = args.seed
+
+    rng = random.Random(tournament_seed)
+    for match in matches:
+        if (match.seed is None):
+            match.seed = rng.randint(0, 2**64)
+
     with multiprocessing.pool.ThreadPool(args.workers) as pool:
         work_results = []
         for (index, match) in enumerate(matches):
@@ -324,14 +333,6 @@ def run_cli(args: argparse.Namespace) -> int:
     """ Discover teams, run their matches, and print tournament summaries. """
 
     matches = _schedule_matches(_get_teams(args))
-
-    tournament_seed = random.randint(0, 2**64)
-    if (args.seed is not None):
-        tournament_seed = args.seed
-
-    rng = random.Random(tournament_seed)
-    for match in matches:
-        match.seed = rng.randint(0, 2**64)
 
     if (args.output_dir is not None):
         os.makedirs(args.output_dir, exist_ok = True)
