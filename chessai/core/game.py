@@ -10,9 +10,11 @@ import typing
 
 import edq.util.serial
 
+import chessai.chess.piece
 import chessai.core.action
 import chessai.core.agentinfo
 import chessai.core.board
+import chessai.core.coordinate
 import chessai.core.gameparser
 import chessai.core.isolation.level
 import chessai.core.ui
@@ -138,6 +140,21 @@ class GameInfo(edq.util.serial.DictConverter):
         self.wait_for_user: bool = wait_for_user
         """ Pause the game between each move until the user is ready. """
 
+    @classmethod
+    def from_dict(cls,
+            data: dict[str, typing.Any],
+            context: edq.util.serial.SerializationContext | None = None,
+            ) -> 'GameInfo':
+        data = dict(data)
+        raw_infos = data.pop('agent_infos', {})
+        agent_infos: dict[chessai.core.types.Color, chessai.core.agentinfo.AgentInfo] = {}
+        for (raw_color, raw_agent_info) in raw_infos.items():
+            agent_infos[chessai.core.types.Color(int(raw_color))] = chessai.core.agentinfo.AgentInfo.from_dict(raw_agent_info, context)
+
+        init_data = super().prep_init_data(data, context)
+        init_data['agent_infos'] = agent_infos
+        return cls(**init_data)
+
 class GameResult(edq.util.serial.DictConverter):
     """ The result of running a game. """
 
@@ -233,6 +250,80 @@ class GameResult(edq.util.serial.DictConverter):
             return math.inf
 
         return self.end_time.sub(self.start_time).to_secs()
+
+    def to_dict(self,
+            context: edq.util.serial.SerializationContext | None = None,
+            ) -> dict[str, typing.Any]:
+        data = typing.cast(dict[str, typing.Any], super().to_dict(context))
+        for (record, raw_record) in zip(self.history, data['history']):
+            self._add_action_uci(record, raw_record)
+
+        for (color, record) in self.agent_complete_records.items():
+            self._add_action_uci(record, data['agent_complete_records'][color])
+
+        return data
+
+    @classmethod
+    def from_dict(cls,
+            data: dict[str, typing.Any],
+            context: edq.util.serial.SerializationContext | None = None,
+            ) -> 'GameResult':
+        data = dict(data)
+        raw_history = data.pop('history', [])
+        raw_records = data.pop('agent_complete_records', {})
+        agent_complete_records: dict[chessai.core.types.Color, chessai.core.agentaction.AgentActionRecord] = {}
+        for (raw_color, raw_actions) in raw_records.items():
+            agent_complete_records[chessai.core.types.Color(int(raw_color))] = cls._agent_action_record_from_dict(raw_actions)
+
+        init_data = super().prep_init_data(data, context)
+        init_data['history'] = [cls._agent_action_record_from_dict(raw_record) for raw_record in raw_history]
+        init_data['agent_complete_records'] = agent_complete_records
+        return cls(**init_data)
+
+    @staticmethod
+    def _add_action_uci(record: chessai.core.agentaction.AgentActionRecord,
+            raw_record: dict[str, typing.Any],
+            ) -> None:
+        """Add an action's UCI value to a serialized agent-action record."""
+
+        if (record.agent_action is None):
+            return
+
+        raw_record['agent_action']['action_uci'] = record.agent_action.action.uci()
+
+    @staticmethod
+    def _agent_action_record_from_dict(data: dict[str, typing.Any],
+            ) -> chessai.core.agentaction.AgentActionRecord:
+        """Reconstruct an action record without relying on an abstract action type."""
+
+        raw_agent_action = data['agent_action']
+        agent_action = None
+        if (raw_agent_action is not None):
+            raw_uci = raw_agent_action.get('action_uci', None)
+            if (raw_uci is not None):
+                action = chessai.core.action.from_uci(raw_uci)
+            else:
+                raw_action = raw_agent_action['action']
+                if ('start_coordinate' in raw_action) and ('end_coordinate' in raw_action):
+                    action = chessai.core.action.MoveAction(
+                        chessai.core.coordinate.Coordinate.from_dict(raw_action['start_coordinate']),
+                        chessai.core.coordinate.Coordinate.from_dict(raw_action['end_coordinate']),
+                    )
+                else:
+                    action = chessai.core.action.NoneAction()
+
+            agent_action = chessai.core.agentaction.AgentAction(
+                action,
+                raw_agent_action.get('other_info', {}),
+            )
+
+        return chessai.core.agentaction.AgentActionRecord(
+            chessai.core.types.Color(int(data['player'])),
+            agent_action,
+            edq.util.time.Duration(data['duration']),
+            crashed = data.get('crashed', False),
+            timeout = data.get('timeout', False),
+        )
 
 class Game(abc.ABC):
     """

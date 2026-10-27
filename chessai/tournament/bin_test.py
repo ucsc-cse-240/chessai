@@ -2,7 +2,12 @@ import os
 import tempfile
 
 import edq.testing.unittest
+import edq.util.time
 
+import chessai.core.agentaction
+import chessai.core.agentinfo
+import chessai.core.game
+import chessai.core.types
 import chessai.tournament.bin
 
 class TournamentRunnerTest(edq.testing.unittest.BaseTest):
@@ -54,8 +59,43 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
             chessai.tournament.bin.Team('alpha', '/alpha.py'),
             chessai.tournament.bin.Team('beta', '/beta.py'),
             results = [
-                {'score': 1.0, 'history': [None], 'start_time': 1000, 'end_time': 3000},
-                {'score': 0.0, 'history': [None, None], 'start_time': 5000, 'end_time': 8000},
+                chessai.core.game.GameResult(
+                    1,
+                    chessai.core.game.GameInfo({
+                        chessai.core.types.Color.WHITE: chessai.core.agentinfo.AgentInfo('agent-dummy'),
+                    }),
+                    score = 1.0,
+                    history = [
+                        chessai.core.agentaction.AgentActionRecord(
+                            chessai.core.types.Color.WHITE,
+                            None,
+                            edq.util.time.Duration(0),
+                        ),
+                    ],
+                    start_time = edq.util.time.Timestamp(1000),
+                    end_time = edq.util.time.Timestamp(3000),
+                ),
+                chessai.core.game.GameResult(
+                    2,
+                    chessai.core.game.GameInfo({
+                        chessai.core.types.Color.WHITE: chessai.core.agentinfo.AgentInfo('agent-dummy'),
+                    }),
+                    score = 0.0,
+                    history = [
+                        chessai.core.agentaction.AgentActionRecord(
+                            chessai.core.types.Color.WHITE,
+                            None,
+                            edq.util.time.Duration(0),
+                        ),
+                        chessai.core.agentaction.AgentActionRecord(
+                            chessai.core.types.Color.BLACK,
+                            None,
+                            edq.util.time.Duration(0),
+                        ),
+                    ],
+                    start_time = edq.util.time.Timestamp(5000),
+                    end_time = edq.util.time.Timestamp(8000),
+                ),
             ],
             status = chessai.tournament.bin.MatchStatus.SUCCESS,
         )

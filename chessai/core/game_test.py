@@ -1,10 +1,12 @@
 import edq.testing.unittest
+import edq.util.json
 import edq.util.time
 import edq.util.serial
 
 import chessai.core.action
 import chessai.core.agentaction
 import chessai.core.agentinfo
+import chessai.core.coordinate
 import chessai.core.game
 import chessai.core.isolation.level
 import chessai.core.types
@@ -151,6 +153,10 @@ class GameResultTest(edq.testing.unittest.BaseTest):
                     chessai.core.agentaction.AgentActionRecord(
                         chessai.core.types.Color.WHITE,
                         chessai.core.agentaction.AgentAction(
+                            chessai.core.action.MoveAction(
+                                chessai.core.coordinate.Coordinate(0, 1),
+                                chessai.core.coordinate.Coordinate(0, 3),
+                            ),
                             other_info = {'note': 'hello', 'depth': 3},
                         ),
                         edq.util.time.Duration(10),
@@ -199,8 +205,11 @@ class GameResultTest(edq.testing.unittest.BaseTest):
                 # Convert the game result to a dict.
                 dict_game_result = expected_game_result.to_dict()
 
+                # Exercise the JSON form used when results are written to disk.
+                json_game_result = edq.util.json.loads(edq.util.json.dumps(dict_game_result), strict = True)
+
                 # Convert the dict back to a game result.
-                actual_game_result = chessai.core.game.GameResult.from_dict(dict_game_result)
+                actual_game_result = chessai.core.game.GameResult.from_dict(json_game_result)
 
                 # Compare results.
                 self.assertEqual(expected_game_result, actual_game_result)
