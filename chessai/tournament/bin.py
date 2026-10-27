@@ -23,6 +23,8 @@ import edq.util.serial
 import chessai.core.agentinfo
 import chessai.core.game
 import chessai.core.isolation.level
+import chessai.core.log
+import chessai.core.ui
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
@@ -181,7 +183,7 @@ def _match_args(match: Match, args: argparse.Namespace, save_path: str | None, r
         '--agent-end-timeout', str(args.agent_end_timeout),
         '--agent-action-timeout', str(args.agent_action_timeout),
         '--isolation', args.isolation_level,
-        '--ui', 'null',
+        '--ui', args.ui,
         '--results-path', results_path,
     ]
 
@@ -358,7 +360,13 @@ def main(argv: list[str] | None = None) -> int:
 def _get_parser() -> argparse.ArgumentParser:
     """ Get the tournament parser. """
 
-    parser = edq.core.argparser.get_default_parser(__doc__.strip())
+    parser = argparse.ArgumentParser(description = __doc__.strip())
+
+    # Add logging arguments.
+    parser = chessai.core.log.set_cli_args(parser)
+
+    # Add UI arguments.
+    parser = chessai.core.ui.set_cli_args(parser)
 
     parser.add_argument('--board', type = str, default = None,
         help = 'Play every game on this board or FEN (default: %(default)s).')
