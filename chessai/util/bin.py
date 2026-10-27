@@ -3,6 +3,8 @@ import logging
 import math
 import typing
 
+import edq.util.json
+
 import chessai.core.agentaction
 import chessai.core.agentinfo
 import chessai.core.game
@@ -245,5 +247,9 @@ def run_games(
     if (len(results) > 0):
         if (log_results is not None):
             log_results(results, winning_agent_teams)
+
+    if (args.results_path is not None):
+        dict_results = [result.to_dict() for result in results]
+        edq.util.json.dump_path(dict_results, args.results_path)
 
     return results

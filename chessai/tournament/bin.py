@@ -218,7 +218,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
         match.log_path = os.path.relpath(log_path, args.output_dir)
         match.save_path = os.path.relpath(save_path, args.output_dir)
 
-    results_path = os.path.join(work_dir, 'game.json')
+    results_path = os.path.join(work_dir, 'results.json')
     command = _match_args(match, args, save_path, results_path)
 
     try:
@@ -234,8 +234,9 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
             )
 
         with open(results_path, 'r', encoding = 'utf-8') as results_file:
-            result = chessai.core.game.GameResult.from_dict(edq.util.json.loads(results_file.read(), strict = True))
-            match.results.append(result)
+            raw_results = edq.util.json.loads(results_file.read(), strict = True)
+            for raw_result in raw_results:
+                match.results.append(chessai.core.game.GameResult.from_dict(raw_result))
 
         match.status = MatchStatus.SUCCESS
         match.error = None
