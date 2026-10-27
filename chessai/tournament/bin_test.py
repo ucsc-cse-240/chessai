@@ -1,4 +1,6 @@
 import os
+import unittest
+import sys
 import tempfile
 
 import edq.testing.unittest
@@ -87,6 +89,7 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
 
                 self.assertEqual(expected_matches, actual_matches)
 
+    @unittest.skipIf(sys.platform.startswith("win"), "tournaments require POSIX")
     def test_run_tournament(self):
         """ Run tournament matches and observe the results. """
 
