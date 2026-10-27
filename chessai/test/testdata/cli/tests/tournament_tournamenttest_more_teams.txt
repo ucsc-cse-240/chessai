@@ -1,0 +1,19 @@
+{
+    "cli": "chessai.tournament.bin",
+    "arguments": [
+        "--seed", "2",
+        "--ui", "null",
+        "--max-moves", "100",
+        "--include-team", "agent-random",
+        "--include-team", "agent-greedy",
+        "--include-team", "agent-dummy",
+    ]
+}
+---
+white	black	seed	status	error	games_run	white_wins	ties	white_losses	white_score	average_moves	average_duration_secs	log_path	replay_path
+RandomAgent	GreedyAgent	1043188731678011336	success		1	1	0	0	1.0	27.0	<DURATION_SECONDS>		
+GreedyAgent	RandomAgent	15750464385269855119	success		1	0	1	0	0.5	100.0	<DURATION_SECONDS>		
+RandomAgent	DummyAgent	11177696979271009112	success		1	1	0	0	1.0	2.0	<DURATION_SECONDS>		
+DummyAgent	RandomAgent	11777717384603786643	success		1	0	0	1	0.0	1.0	<DURATION_SECONDS>		
+GreedyAgent	DummyAgent	9261506877292934866	success		1	1	0	0	1.0	2.0	<DURATION_SECONDS>		
+DummyAgent	GreedyAgent	6714881033235767365	success		1	0	0	1	0.0	1.0	<DURATION_SECONDS>		

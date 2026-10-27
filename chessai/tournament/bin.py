@@ -293,6 +293,8 @@ def _summary(match: Match) -> dict[str, typing.Any]:
     if (len(durations) > 0):
         average_duration = (sum(durations) / len(durations))
 
+    average_duration_string = f"{average_duration} seconds"
+
     return {
         'white': _display_name(match.white.name),
         'black': _display_name(match.black.name),
@@ -305,7 +307,7 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         'white_losses': len(scores) - wins - ties,
         'white_score': average_score,
         'average_moves': average_moves,
-        'average_duration_secs': average_duration,
+        'average_duration_secs': average_duration_string,
         'log_path': match.log_path,
         'replay_path': match.save_path,
     }

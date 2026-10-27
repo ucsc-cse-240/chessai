@@ -10,7 +10,6 @@ import chessai.core.game
 import chessai.core.types
 import chessai.tournament.bin
 
-
 def _agent(name: str) -> chessai.core.agentinfo.AgentInfo:
     return chessai.core.agentinfo.AgentInfo(name = name)
 
@@ -87,3 +86,138 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
                     actual_matches.append((match.white, match.black))
 
                 self.assertEqual(expected_matches, actual_matches)
+
+    def test_run_tournament(self):
+        """ Run tournament matches and observe the results. """
+
+        default_argv = [
+                '--seed', '4',
+                ]
+
+        # [([(white name, black name), ...], [argv, ...], [[(score, num moves, reason), ...], ...])]
+        test_cases: list[tuple[
+                list[tuple[str, str]],
+                list[str],
+                list[list[tuple[float, int, chessai.core.types.TerminationReason]]]
+            ]] = [
+                # Simple random setup.
+                (
+                    [
+                        ('agent-random', 'agent-random'),
+                    ],
+                    [],
+                    [
+                        [(0.5, 100, chessai.core.types.TerminationReason.GAME_TIMEOUT)],
+                    ],
+                ),
+
+                # Limit the number of moves.
+                (
+                    [
+                        ('agent-random', 'agent-random'),
+                    ],
+                    [
+                        '--max-moves', '10',
+                    ],
+                    [
+                        [(0.5, 10, chessai.core.types.TerminationReason.GAME_TIMEOUT)],
+                    ],
+                ),
+
+                # Multiple matches.
+                (
+                    [
+                        ('agent-random', 'agent-random'),
+                        ('agent-random', 'agent-random'),
+                    ],
+                    [
+                        '--max-moves', '10',
+                    ],
+                    [
+                        [(0.5, 10, chessai.core.types.TerminationReason.GAME_TIMEOUT)],
+                        [(0.5, 10, chessai.core.types.TerminationReason.GAME_TIMEOUT)],
+                    ],
+                ),
+
+                # Dummy agent loses.
+                (
+                    [
+                        ('agent-dummy', 'agent-random'),
+                    ],
+                    [
+                        '--max-moves', '10',
+                    ],
+                    [
+                        [(0, 1, chessai.core.types.TerminationReason.AGENT_CRASHED)],
+                    ],
+                ),
+
+                # Random agent beats dummy agent.
+                (
+                    [
+                        ('agent-random', 'agent-dummy'),
+                    ],
+                    [
+                        '--max-moves', '10',
+                    ],
+                    [
+                        [(1, 2, chessai.core.types.TerminationReason.AGENT_CRASHED)],
+                    ],
+                ),
+
+                # Multiple games for each match.
+                (
+                    [
+                        ('agent-random', 'agent-random'),
+                    ],
+                    [
+                        '--max-moves', '10',
+                        '--num-games', '2',
+                    ],
+                    [
+                        [
+                            (0.5, 10, chessai.core.types.TerminationReason.GAME_TIMEOUT),
+                            (0.5, 10, chessai.core.types.TerminationReason.GAME_TIMEOUT),
+                        ],
+                    ],
+                ),
+            ]
+
+        for (i, test_case) in enumerate(test_cases):
+            (all_team_names, extra_argvs, all_expected_results) = test_case
+
+            with self.subTest(msg = f"Case {i}:"):
+                # Construct the matches
+                matches = []
+                for team_names in all_team_names:
+                    (white_team, black_team) = team_names
+                    white_info = chessai.core.agentinfo.AgentInfo(name = white_team)
+                    black_info = chessai.core.agentinfo.AgentInfo(name = black_team)
+
+                    match = chessai.tournament.bin.Match(white = white_info, black = black_info)
+                    matches.append(match)
+
+                # Construct and parse the match args
+                argv = default_argv + extra_argvs
+
+                parser = chessai.tournament.bin._get_parser()
+                args = parser.parse_args(argv)
+
+                # Running the tournament stores results within the match objects
+                chessai.tournament.bin._run_tournament(matches, args)
+
+                # Collect the results from the matches
+                all_actual_results = []
+                for match in matches:
+                    all_actual_results.append(match.results)
+
+                self.assertEqual(len(all_expected_results), len(all_actual_results))
+
+                for (expected_results, actual_results) in zip(all_expected_results, all_actual_results):
+                    self.assertEqual(len(expected_results), len(actual_results))
+
+                    for (expected_result, actual_result) in zip(expected_results, actual_results):
+                        (expected_score, expected_num_moves, expected_reason) = expected_result
+                        self.assertAlmostEqual(expected_score, actual_result.score)
+                        self.assertEqual(expected_num_moves, len(actual_result.history))
+                        self.assertEqual(expected_reason, actual_result.termination_reason)
