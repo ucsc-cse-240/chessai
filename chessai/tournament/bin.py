@@ -38,6 +38,7 @@ DEFAULT_AGENT_ACTION_TIMEOUT: int = 3
 DEFAULT_AGENT_START_TIMEOUT: int = 15
 DEFAULT_AGENT_END_TIMEOUT: int = 6
 DEFAULT_MAX_MOVES: int = 100
+DEFAULT_MATCH_TIMEOUT_SLACK: float = 30.0
 
 DELIM: str = "\t"
 MS_PER_SECOND: int = 1000
@@ -156,7 +157,24 @@ def _get_teams(args: argparse.Namespace) -> list[chessai.core.agentinfo.AgentInf
     if (len(teams) < 2):
         raise ValueError(f"At least two teams are required to run a tournament, got {len(teams)}")
 
+    _validate_team_display_names(teams)
+
     return teams
+
+def _validate_team_display_names(teams: list[chessai.core.agentinfo.AgentInfo]) -> None:
+    """Reject distinct teams whose result labels would be indistinguishable."""
+
+    seen_names: dict[str, str] = {}
+    for team in teams:
+        display_name = _display_name(team.name)
+        reference = str(team.name)
+        previous_reference = seen_names.get(display_name)
+        if ((previous_reference is not None) and (previous_reference != reference)):
+            raise ValueError(
+                f"Tournament teams '{previous_reference}' and '{reference}' both display as "
+                f"'{display_name}'. Rename one team directory or use distinct agent references.")
+
+        seen_names[display_name] = reference
 
 def _schedule_matches(teams: list[chessai.core.agentinfo.AgentInfo]) -> list[Match]:
     """ Schedule matches for every unique pair of teams. """
@@ -198,13 +216,31 @@ def _match_args(match: Match, args: argparse.Namespace, save_path: str | None, r
 
     return match_args
 
+def _get_match_timeout(args: argparse.Namespace) -> float | None:
+    """Get an overall timeout for one match subprocess, if it has a finite bound."""
+
+    if (args.match_timeout is not None):
+        return args.match_timeout
+
+    limits = [args.agent_start_timeout, args.agent_end_timeout, args.agent_action_timeout]
+    if ((args.max_moves < 0) or any(limit <= 0 for limit in limits)):
+        return None
+
+    one_game_timeout = (
+        (2 * args.agent_start_timeout)
+        + (2 * args.agent_end_timeout)
+        + (args.max_moves * args.agent_action_timeout)
+    )
+    return (args.num_games * one_game_timeout) + DEFAULT_MATCH_TIMEOUT_SLACK
+
 def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) -> Match:
     """ Run one scheduled match and attach its result or failure information. """
 
     save_path: str | None = None
     log_path = os.devnull
 
-    if (args.output_dir is None):
+    is_temporary_work_dir = (args.output_dir is None)
+    if (is_temporary_work_dir):
         work_dir = edq.util.dirent.get_temp_dir('chessai-')
     else:
         name = f'{index + 1:04d}-{_display_name(match.white.name)}-vs-{_display_name(match.black.name)}'
@@ -218,6 +254,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
 
     results_path = os.path.join(work_dir, 'results.json')
     command = _match_args(match, args, save_path, results_path)
+    match_timeout = _get_match_timeout(args)
 
     try:
         match.status = MatchStatus.RUNNING
@@ -229,6 +266,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
                 shell = False,
                 check = True,
                 cwd = ROOT_DIR,
+                timeout = match_timeout,
             )
 
         with open(results_path, 'r', encoding = 'utf-8') as results_file:
@@ -241,9 +279,18 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     except subprocess.CalledProcessError as error:
         match.status = MatchStatus.FAILURE
         match.error = f"Match exited with code {error.returncode} (see log)."
+    except subprocess.TimeoutExpired:
+        match.status = MatchStatus.FAILURE
+        if (match_timeout is None):
+            match.error = 'Match timed out.'
+        else:
+            match.error = f'Match timed out after {match_timeout} seconds (see log).'
     except Exception as error:  # pylint: disable = broad-exception-caught
         match.status = MatchStatus.FAILURE
         match.error = str(error)
+    finally:
+        if (is_temporary_work_dir):
+            edq.util.dirent.remove(work_dir)
 
     return match
 
@@ -302,8 +349,6 @@ def _summary(match: Match) -> dict[str, typing.Any]:
     if (len(durations) > 0):
         average_duration = (sum(durations) / len(durations))
 
-    average_duration_string = f"{average_duration} seconds"
-
     return {
         'white': _display_name(match.white.name),
         'black': _display_name(match.black.name),
@@ -316,7 +361,7 @@ def _summary(match: Match) -> dict[str, typing.Any]:
         'white_losses': len(scores) - wins - ties,
         'white_score': average_score,
         'average_moves': average_moves,
-        'average_duration_secs': average_duration_string,
+        'average_duration_secs': average_duration,
         'log_path': match.log_path,
         'replay_path': match.save_path,
     }
@@ -357,6 +402,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _get_parser().parse_args(argv)
     if (args.workers <= 0):
         raise ValueError(f'--workers must be positive, {args.workers} was specified.')
+    if ((args.match_timeout is not None) and (args.match_timeout <= 0)):
+        raise ValueError(f'--match-timeout must be positive, {args.match_timeout} was specified.')
 
     return run_cli(args)
 
@@ -392,6 +439,10 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--agent-action-timeout', type = float, default = DEFAULT_AGENT_ACTION_TIMEOUT,
         help = 'Maximum seconds each agent may use per action (default: %(default)s).')
 
+    parser.add_argument('--match-timeout', type = float, default = None, metavar = 'SECONDS',
+        help = ('Overall timeout for one match subprocess. If omitted, a timeout is derived when all game '
+                'limits are finite; otherwise no overall timeout is used.'))
+
     parser.add_argument('--isolation', dest = 'isolation_level', choices = chessai.core.isolation.level.LEVELS,
         default = chessai.core.isolation.level.Level.PROCESS.value,
         help = 'Agent isolation level (default: %(default)s).')
@@ -405,7 +456,8 @@ def _get_parser() -> argparse.ArgumentParser:
         help = 'Directory containing student submission directories (default: %(default)s).')
 
     parser.add_argument('--include-team', action = 'append', default = [], metavar = 'NAME',
-        help = 'Include a team by name, overrides --ignore-team (may be used multiple times).')
+        help = ('Add an explicit agent reference in addition to discovered team directories '
+                '(may be used multiple times).'))
 
     parser.add_argument('--ignore-team', action = 'append', default = [], metavar = 'NAME',
         help = 'Ignore a team directory by name (may be used multiple times).')

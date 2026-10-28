@@ -18,6 +18,36 @@ def _agent(name: str) -> chessai.core.agentinfo.AgentInfo:
 class TournamentRunnerTest(edq.testing.unittest.BaseTest):
     """ Test tournament discovery without running untrusted agents. """
 
+    def test_match_timeout(self):
+        """ Finite game limits produce a derived timeout and unlimited limits do not. """
+
+        parser = chessai.tournament.bin._get_parser()
+        finite_args = parser.parse_args([
+            '--num-games', '3', '--max-moves', '2',
+            '--agent-start-timeout', '1', '--agent-end-timeout', '1',
+            '--agent-action-timeout', '1',
+        ])
+        self.assertEqual(48.0, chessai.tournament.bin._get_match_timeout(finite_args))
+
+        unlimited_args = parser.parse_args(['--agent-action-timeout', '0'])
+        self.assertIsNone(chessai.tournament.bin._get_match_timeout(unlimited_args))
+
+        explicit_args = parser.parse_args(['--agent-action-timeout', '0', '--match-timeout', '9'])
+        self.assertEqual(9.0, chessai.tournament.bin._get_match_timeout(explicit_args))
+
+    def test_validate_team_display_names(self):
+        """ Distinct references may not share a result display name. """
+
+        duplicate_names = [
+            _agent('/first/same/tournament.py:TournamentAgent'),
+            _agent('/second/same/tournament.py:TournamentAgent'),
+        ]
+        with self.assertRaises(ValueError):
+            chessai.tournament.bin._validate_team_display_names(duplicate_names)
+
+        repeated_reference = [_agent('agent-random'), _agent('agent-random')]
+        chessai.tournament.bin._validate_team_display_names(repeated_reference)
+
     def test_collect_teams(self):
         """ Only non-excluded immediate directories with tournament.py participate. """
 
@@ -224,3 +254,25 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
                         self.assertAlmostEqual(expected_score, actual_result.score)
                         self.assertEqual(expected_num_moves, len(actual_result.history))
                         self.assertEqual(expected_reason, actual_result.termination_reason)
+
+    @unittest.skipIf(sys.platform.startswith("win"), "tournaments require POSIX")
+    def test_temporary_match_directory_is_cleaned(self):
+        """ Matches without an output directory remove their temporary work directory. """
+
+        parser = chessai.tournament.bin._get_parser()
+        args = parser.parse_args([
+            '--max-moves', '1', '--agent-start-timeout', '0',
+            '--agent-end-timeout', '0', '--agent-action-timeout', '0', '--ui', 'null',
+        ])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_temp_dir = tempfile.tempdir
+            tempfile.tempdir = temp_dir
+            try:
+                match = chessai.tournament.bin.Match(_agent('agent-random'), _agent('agent-random'))
+                chessai.tournament.bin._run_tournament_match(0, match, args)
+            finally:
+                tempfile.tempdir = old_temp_dir
+
+            self.assertEqual(chessai.tournament.bin.MatchStatus.SUCCESS, match.status)
+            self.assertEqual([], os.listdir(temp_dir))
+            self.assertIsInstance(chessai.tournament.bin._summary(match)['average_duration_secs'], float)

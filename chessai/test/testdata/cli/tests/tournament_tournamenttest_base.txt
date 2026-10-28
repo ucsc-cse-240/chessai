@@ -1,5 +1,6 @@
 {
     "cli": "chessai.tournament.bin",
+    "stdout_assertion_func": "chessai.test.cli_test.tournament_output_equals",
     "platform_skip": "darwin|win32",
     "arguments": [
         "--seed", "2",
