@@ -10,7 +10,7 @@
         "--agent-end-timeout", "0.1",
         "--agent-action-timeout", "0.1",
         "--agent-arg", "white::game_start_wait=0.2",
-        "--max-moves", "2"
+        "--max-moves", "2",
     ]
 }
 ---

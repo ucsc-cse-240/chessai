@@ -4,7 +4,7 @@
         "--seed", "4",
         "--ui", "null",
         "--white-team", "agent-random",
-        "--black-team", "agent-cheating"
+        "--black-team", "agent-cheating",
     ]
 }
 ---

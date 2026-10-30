@@ -3,7 +3,8 @@
     "arguments": [
         "--seed", "2",
         "--ui", "null",
-        "--max-moves", "10"
+        "--max-moves", "10",
+        "--white-team", "agent-random",
     ]
 }
 ---

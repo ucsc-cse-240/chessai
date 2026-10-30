@@ -5,7 +5,7 @@
         "--seed", "4",
         "--ui", "null",
         "--white-team", "agent-cheating",
-        "--isolation", "process"
+        "--isolation", "process",
     ]
 }
 ---

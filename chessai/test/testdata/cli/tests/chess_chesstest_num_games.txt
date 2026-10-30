@@ -6,7 +6,7 @@
         "--max-moves", "200",
         "--num-games", "2",
         "--white-team", "agent-random",
-        "--black-team", "agent-aggressive"
+        "--black-team", "agent-aggressive",
     ]
 }
 ---

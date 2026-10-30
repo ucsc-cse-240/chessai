@@ -5,7 +5,7 @@
         "--ui", "null",
         "--max-moves", "100",
         "--white-team", "agent-aggressive",
-        "--black-team", "agent-aggressive"
+        "--black-team", "agent-aggressive",
     ]
 }
 ---

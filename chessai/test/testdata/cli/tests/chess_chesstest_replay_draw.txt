@@ -4,6 +4,7 @@
         "--ui", "null",
         "--max-moves", "100",
         "--replay-path", "draw-accepted",
+        "--white-team", "agent-random",
     ]
 }
 ---

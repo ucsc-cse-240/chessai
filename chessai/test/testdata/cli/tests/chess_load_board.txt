@@ -4,7 +4,8 @@
         "--seed", "2",
         "--ui", "null",
         "--max-moves", "100",
-        "--board", "chessai/resources/boards/mini-silverman.fen"
+        "--white-team", "agent-random",
+        "--board", "chessai/resources/boards/mini-silverman.fen",
     ]
 }
 ---

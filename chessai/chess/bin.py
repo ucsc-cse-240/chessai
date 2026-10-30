@@ -16,7 +16,7 @@ def set_cli_args(parser: argparse.ArgumentParser, **kwargs: typing.Any) -> argpa
     """
 
     parser.add_argument('--white-team', dest = 'white_team',
-            action = 'store', type = str, default = chessai.util.alias.AGENT_RANDOM.short,
+            action = 'store', type = str, default = chessai.util.alias.AGENT_USER_INPUT.short,
             help = ('Select the chess team that will play on the white team (default: %(default)s).'
                     + f' Builtin teams: {chessai.util.alias.AGENT_SHORT_NAMES}.'))
 
