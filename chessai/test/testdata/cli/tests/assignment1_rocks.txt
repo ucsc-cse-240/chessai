@@ -6,7 +6,7 @@
         "--board", "tour-rocks",
         "--max-moves", "100",
         "--white-team", "agent-multi-scripted",
-        "--agent-arg", "white::move_lines=[[\"a1c2\", \"c2b4\", \"b4d3\", \"d3f2\", \"f2g4\", \"g4h6\", \"h6f7\", \"f7h8\"]]"
+        "--agent-arg", "white::move_lines=[[\"a1c2\", \"c2b4\", \"b4d3\", \"d3f2\", \"f2g4\", \"g4h6\", \"h6f7\", \"f7h8\"]]",
     ]
 }
 ---

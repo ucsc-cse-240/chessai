@@ -5,9 +5,9 @@
         "--ui", "null",
         "--board", "guarded-tour",
         "--max-moves", "100",
-        "--white", "agent-multi-scripted",
+        "--white-team", "agent-multi-scripted",
         "--black", "agent-guard",
-        "--agent-arg", "white::move_lines=[[\"d5g5\"]]"
+        "--agent-arg", "white::move_lines=[[\"d5g5\"]]",
     ]
 }
 ---

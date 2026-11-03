@@ -25,7 +25,7 @@ def set_cli_args(parser: argparse.ArgumentParser, **kwargs: typing.Any) -> argpa
     """
 
     parser.add_argument('--agent', dest = 'agent',
-            action = 'store', type = str, default = chessai.util.alias.AGENT_RANDOM.short,
+            action = 'store', type = str, default = chessai.util.alias.AGENT_USER_INPUT.short,
             help = ('Select the agent type that the puzzle agent will use (default: %(default)s).'
                     + f' Builtin agents: {chessai.util.alias.AGENT_SHORT_NAMES}.'))
 

@@ -4,9 +4,9 @@
         "--seed", "2",
         "--ui", "null",
         "--max-moves", "100",
-        "--white", "agent-minimax",
+        "--white-team", "agent-minimax",
         "--agent-arg", "white::expectimax=true",
-        "--debug"
+        "--debug",
     ]
 }
 ---

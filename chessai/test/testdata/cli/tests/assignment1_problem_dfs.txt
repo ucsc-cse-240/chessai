@@ -5,7 +5,7 @@
         "--ui", "null",
         "--white-team", "agent-search-problem",
         "--agent-arg", "white::solver=search-solver-dfs",
-        "--max-moves", "100"
+        "--max-moves", "100",
     ]
 }
 ---

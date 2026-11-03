@@ -3,7 +3,7 @@
     "arguments": [
         "--ui", "null",
         "--agent", "agent-multi-scripted",
-        "--agent-arg", "white::move_lines=[[\"f7f2\"]]"
+        "--agent-arg", "white::move_lines=[[\"f7f2\"]]",
     ]
 }
 ---

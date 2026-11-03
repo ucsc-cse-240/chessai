@@ -4,7 +4,7 @@
         "--ui", "null",
         "--agent", "agent-multi-scripted",
         "--agent-arg", "white::move_lines=[[\"g4f3\"]]",
-        "--board", "puzzle-skewer"
+        "--board", "puzzle-skewer",
     ]
 }
 ---

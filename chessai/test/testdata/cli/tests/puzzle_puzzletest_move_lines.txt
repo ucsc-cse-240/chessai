@@ -4,7 +4,7 @@
         "--ui", "null",
         "--agent", "agent-multi-scripted",
         "--agent-arg", "white::move_lines=[[\"c6d5\"]]",
-        "--move-lines", "[[\"c6d5\"]]"
+        "--move-lines", "[[\"c6d5\"]]",
     ]
 }
 ---

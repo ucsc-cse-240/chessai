@@ -4,7 +4,7 @@
         "--ui", "null",
         "--agent", "agent-multi-scripted",
         "--agent-arg", "black::move_lines=[[\"c2e3\",\"g2h3\",\"f8h8\",\"a7h7\",\"h8h7\"]]",
-        "--board", "puzzle-mate-3"
+        "--board", "puzzle-mate-3",
     ]
 }
 ---

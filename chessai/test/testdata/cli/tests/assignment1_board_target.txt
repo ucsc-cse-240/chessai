@@ -3,9 +3,10 @@
     "arguments": [
         "--seed", "4",
         "--ui", "null",
+        "--white-team", "agent-random",
         "--board", "tour-base",
         "--search-targets", "g7",
-        "--max-moves", "450"
+        "--max-moves", "450",
     ]
 }
 ---

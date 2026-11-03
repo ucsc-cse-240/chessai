@@ -6,7 +6,7 @@
         "--white-team", "agent-minimax",
         "--agent-arg", "white::alphabeta_prune=true",
         "--max-moves", "100",
-        "--debug"
+        "--debug",
     ]
 }
 ---
