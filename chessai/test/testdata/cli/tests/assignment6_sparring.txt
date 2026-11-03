@@ -1,0 +1,16 @@
+{
+    "cli": "chessai.chess.bin",
+    "arguments": [
+        "--seed", "3",
+        "--ui", "null",
+        "--max-moves", "100",
+        "--num-games", "10",
+        "--white-team", "agent-sparring",
+    ]
+}
+---
+<LOG_PREFIX> -- Average Score: 0.70
+<LOG_PREFIX> -- Scores:        0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0
+<LOG_PREFIX> -- Record:        Tie, Tie, Tie, Tie, Tie, Tie, Win, Win, Win, Win
+<LOG_PREFIX> -- Average Moves: 78.2
+<LOG_PREFIX> -- Move Counts:   100, 100, 100, 100, 100, 100, 71, 33, 45, 33

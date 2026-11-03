@@ -71,6 +71,7 @@ AGENT_PICK_FIRST: Alias = Alias('agent-pick-first', 'chessai.agents.pickfirst.Pi
 AGENT_RANDOM: Alias = Alias('agent-random', 'chessai.agents.random.RandomAgent')
 AGENT_REFLEX: Alias = Alias('agent-reflex', 'chessai.student.multiagents.ReflexAgent')
 AGENT_SCRIPTED: Alias = Alias('agent-scripted', 'chessai.agents.scripted.ScriptedAgent')
+AGENT_SPARRING: Alias = Alias('agent-sparring', 'chessai.agents.sparring.SparringAgent')
 AGENT_SEARCH_KING_ESCORT: Alias = Alias('agent-search-king-escort', 'chessai.student.singlesearch.KingEscortSearchAgent')
 AGENT_SEARCH_PROBLEM: Alias = Alias('agent-search-problem', 'chessai.agents.searchproblem.SearchProblemAgent')
 AGENT_TIMEOUT: Alias = Alias('agent-timeout', 'chessai.agents.testing.TimeoutAgent')
@@ -88,6 +89,7 @@ AGENT_SHORT_NAMES: list[str] = [
     AGENT_RANDOM.short,
     AGENT_REFLEX.short,
     AGENT_SCRIPTED.short,
+    AGENT_SPARRING.short,
     AGENT_SEARCH_KING_ESCORT.short,
     AGENT_SEARCH_PROBLEM.short,
     AGENT_TIMEOUT.short,
