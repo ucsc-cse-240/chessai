@@ -12,6 +12,7 @@ import chessai.core.action
 import chessai.core.board
 import chessai.core.castling
 import chessai.core.coordinate
+import chessai.core.gameannotation
 import chessai.core.gamestate
 import chessai.core.piece
 import chessai.core.types
@@ -227,6 +228,18 @@ class ParsedPGN(edq.util.serial.DictConverter):
 
         return self.optional_headers.get(FEN_HEADER_KEY, None)
 
+    def get_game_rating_annotation(self) -> chessai.core.gameannotation.GameRatingAnnotation | None:
+        """ Get the optional typed engine-rating annotation stored in this PGN. """
+
+        value = self.optional_headers.get(chessai.core.gameannotation.GAME_RATING_ANNOTATION_HEADER, None)
+        if (value is None):
+            return None
+
+        if (not isinstance(value, str)):
+            raise ValueError('The game rating annotation header must be a string.')
+
+        return chessai.core.gameannotation.GameRatingAnnotation.from_header_value(value)
+
 def parse_pgn(pgn: str, state_class: typing.Type[chessai.core.gamestate.GameState]) -> ParsedPGN | None:
     """
     Parse a single PGN string into a ParsedPGN.
@@ -274,7 +287,7 @@ def parse_pgn(pgn: str, state_class: typing.Type[chessai.core.gamestate.GameStat
             continue
 
         tag_header_key = tag_match.group(1)
-        tag_header_value = tag_match.group(2)
+        tag_header_value = _unescape_tag_value(tag_match.group(2))
 
         # Determine if this is a standard header key or not.
         if (tag_header_key.lower() in PGN_HEADERS):
@@ -558,6 +571,25 @@ def _escape_tag_value(value: str) -> str:
 
     escaped = value.replace('\\', '\\\\').replace('"', '\\"')
     return escaped
+
+def _unescape_tag_value(value: str) -> str:
+    """ Unescape a PGN tag value parsed from its surrounding quotes. """
+
+    unescaped = ''
+    escaped = False
+    for character in value:
+        if (escaped):
+            unescaped += character
+            escaped = False
+        elif (character == '\\'):
+            escaped = True
+        else:
+            unescaped += character
+
+    if (escaped):
+        unescaped += '\\'
+
+    return unescaped
 
 def _to_tag(header: str, value: str) -> str:
     """ Write a header and its value to a PGN tag. """
