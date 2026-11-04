@@ -9,7 +9,7 @@ import edq.util.serial
 import chessai
 
 GAME_RATING_ANNOTATION_HEADER: str = 'ChessAIStockfishAnalysis'
-""" The PGN header used for a serialized :class:`GameRatingAnnotation`. """
+""" The PGN header used for a serialized `GameRatingAnnotation`. """
 
 class RatingPerspective(str, enum.Enum):
     """ The player for whom a positive rating is favorable. """
@@ -23,6 +23,9 @@ class RatingPerspective(str, enum.Enum):
 Rating: typing.TypeAlias = float | str
 """ A pawn evaluation or a forced-mate value such as ``"M3"``. """
 
+RatingDescription: typing.TypeAlias = str
+""" A short, human-readable explanation of a `Rating`. """
+
 class RatingEngine(edq.util.serial.DictConverter):
     """ Identify the chess engine that produced a game rating. """
 
@@ -34,9 +37,14 @@ class RatingEngine(edq.util.serial.DictConverter):
         """ The source revision used to build the engine. """
 
 class MoveRatingAnnotation(edq.util.serial.DictConverter):
-    """ A rating for the position after one ply of a game. """
+    """ A rating and optional explanation for the position after one ply of a game. """
 
-    def __init__(self, ply: int, rating: Rating, move: str | None = None) -> None:
+    def __init__(self,
+            ply: int,
+            rating: Rating,
+            move: str | None = None,
+            description: RatingDescription | None = None,
+            ) -> None:
         if (ply < 0):
             raise ValueError('The ply for a game rating annotation cannot be negative.')
 
@@ -45,6 +53,9 @@ class MoveRatingAnnotation(edq.util.serial.DictConverter):
 
         self.rating: Rating = rating
         """ The engine evaluation of this position. """
+
+        self.description: RatingDescription | None = description
+        """ A short explanation of the rating, when one is available. """
 
         self.move: str | None = move
         """ The UCI move that produced this position, or ``None`` for the starting position. """
@@ -105,7 +116,7 @@ class GameRatingAnnotation(edq.util.serial.DictConverter):
 
     @classmethod
     def from_header_value(cls, value: str) -> 'GameRatingAnnotation':
-        """ Deserialize a :data:`GAME_RATING_ANNOTATION_HEADER` tag value. """
+        """ Deserialize a `GAME_RATING_ANNOTATION_HEADER` tag value. """
 
         data = edq.util.json.loads(value, strict = True)
         if (not isinstance(data, dict)):
