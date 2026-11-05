@@ -63,6 +63,7 @@ class AgentInfo(edq.util.serial.DictConverter):
 
         self.name = other.name
         self.state_eval_func = other.state_eval_func
+        self.display_name = other.display_name
         self.extra_arguments.update(other.extra_arguments)
 
     def to_flat_dict(self) -> dict[str, typing.Any]:
@@ -75,5 +76,6 @@ class AgentInfo(edq.util.serial.DictConverter):
 
         result['name'] = self.name
         result['state_eval_func'] = str(self.state_eval_func)
+        result['display_name'] = self.display_name
 
         return result

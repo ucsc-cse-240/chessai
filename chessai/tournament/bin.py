@@ -99,14 +99,10 @@ class Match(edq.util.serial.DictConverter):
         self.results_path: str | None = results_path
         """ The path to save the raw match results. """
 
-def _display_name(team: chessai.util.reflection.Reference) -> str:
+def _safe_display_name(agent_info: chessai.core.agentinfo.AgentInfo) -> str:
     """ Convert a supplied identifier into one safe path component. """
 
-    display_name = team.short_name
-    if (team.file_path is not None):
-        display_name = os.path.basename(os.path.dirname(team.file_path)) + '_' + display_name
-
-    safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', display_name.strip()).strip('.-')
+    safe_value = re.sub(r'[^A-Za-z0-9_.-]+', '-', agent_info.display_name.strip()).strip('.-')
     if (len(safe_value) > 0):
         return safe_value
 
@@ -136,7 +132,7 @@ def _collect_teams(directory: str, excluded_names: set[str]) -> list[chessai.cor
         if (not os.path.isfile(agent_path)):
             continue
 
-        teams.append(chessai.core.agentinfo.AgentInfo(name = _agent_reference(agent_path)))
+        teams.append(chessai.core.agentinfo.AgentInfo(name = _agent_reference(agent_path), display_name = entry))
 
     return teams
 
@@ -207,7 +203,7 @@ def _run_tournament_match(index: int, match: Match, args: argparse.Namespace) ->
     if (args.output_dir is None):
         work_dir = edq.util.dirent.get_temp_dir('chessai-')
     else:
-        name = f'{index + 1:04d}-{_display_name(match.white.name)}-vs-{_display_name(match.black.name)}'
+        name = f'{index + 1:04d}-{_safe_display_name(match.white)}-vs-{_safe_display_name(match.black)}'
         work_dir = os.path.join(args.output_dir, name)
         os.makedirs(work_dir, exist_ok = True)
 
@@ -305,8 +301,8 @@ def _summary(match: Match) -> dict[str, typing.Any]:
     average_duration_string = f"{average_duration} seconds"
 
     return {
-        'white': _display_name(match.white.name),
-        'black': _display_name(match.black.name),
+        'white': _safe_display_name(match.white),
+        'black': _safe_display_name(match.black),
         'seed': match.seed,
         'status': match.status.value,
         'error': match.error,
