@@ -284,7 +284,7 @@ class GameResult(edq.util.serial.DictConverter):
     def _add_action_uci(record: chessai.core.agentaction.AgentActionRecord,
             raw_record: dict[str, typing.Any],
             ) -> None:
-        """Add an action's UCI value to a serialized agent-action record."""
+        """ Add an action's UCI value to a serialized agent-action record. """
 
         if (record.agent_action is None):
             return
@@ -294,7 +294,7 @@ class GameResult(edq.util.serial.DictConverter):
     @staticmethod
     def _agent_action_record_from_dict(data: dict[str, typing.Any],
             ) -> chessai.core.agentaction.AgentActionRecord:
-        """Reconstruct an action record without relying on an abstract action type."""
+        """ Reconstruct an action record without relying on an abstract action type. """
 
         raw_agent_action = data['agent_action']
         agent_action = None
@@ -797,21 +797,13 @@ def init_from_args(
 
         white_agent_info = all_agent_infos[-1].get(chessai.core.types.Color.WHITE, None)
         if (white_agent_info is not None):
-            white_reference = white_agent_info.name
-            if (isinstance(white_reference, chessai.util.reflection.Reference)):
-                white_player = str(white_reference)
-            else:
-                white_player = white_reference
+            white_player = white_agent_info.display_name
         else:
             white_player = '?'
 
         black_agent_info = all_agent_infos[-1].get(chessai.core.types.Color.BLACK, None)
         if (black_agent_info is not None):
-            black_reference = black_agent_info.name
-            if (isinstance(black_reference, chessai.util.reflection.Reference)):
-                black_player = str(black_reference)
-            else:
-                black_player = black_reference
+            black_player = black_agent_info.display_name
         else:
             black_player = '?'
 

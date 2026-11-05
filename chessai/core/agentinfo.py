@@ -20,6 +20,7 @@ class AgentInfo(edq.util.serial.DictConverter):
     def __init__(self,
             name: str | chessai.util.reflection.Reference = '',
             state_eval_func: chessai.util.reflection.Reference | str = DEFAULT_STATE_EVAL,
+            display_name: str = '',
             extra_arguments: dict[str, typing.Any] | None = None,
             **kwargs: typing.Any) -> None:
         if (isinstance(name, str)):
@@ -30,6 +31,12 @@ class AgentInfo(edq.util.serial.DictConverter):
 
         self.state_eval_func: chessai.util.reflection.Reference = chessai.util.reflection.Reference(state_eval_func)
         """ The state evaluation function this agent will use. """
+
+        if (display_name == ''):
+            display_name = str(self.name)
+
+        self.display_name = display_name
+        """ The display name of the agent. """
 
         self.extra_arguments: dict[str, typing.Any] = {}
         """
