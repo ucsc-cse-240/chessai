@@ -1,30 +1,16 @@
-""" Typed annotations that can be stored in a PGN game header. """
-
-import enum
 import typing
 
 import edq.util.json
 import edq.util.serial
 
 import chessai
+import chessai.core.types
 
 GAME_RATING_ANNOTATION_HEADER: str = 'ChessAIStockfishAnalysis'
 """ The PGN header used for a serialized `GameRatingAnnotation`. """
 
-class RatingPerspective(str, enum.Enum):
-    """ The player for whom a positive rating is favorable. """
-
-    WHITE = 'white'
-    """ Positive values favor White. """
-
-    BLACK = 'black'
-    """ Positive values favor Black. """
-
 Rating: typing.TypeAlias = float | str
 """ A pawn evaluation or a forced-mate value such as ``"M3"``. """
-
-RatingDescription: typing.TypeAlias = str
-""" A short, human-readable explanation of a `Rating`. """
 
 class RatingEngine(edq.util.serial.DictConverter):
     """ Identify the chess engine that produced a game rating. """
@@ -40,25 +26,10 @@ class MoveRatingAnnotation(edq.util.serial.DictConverter):
     """ A rating and optional explanation for the position after one ply of a game. """
 
     def __init__(self,
-            ply: int,
             rating: Rating,
-            move: str | None = None,
-            description: RatingDescription | None = None,
             ) -> None:
-        if (ply < 0):
-            raise ValueError('The ply for a game rating annotation cannot be negative.')
-
-        self.ply: int = ply
-        """ The zero-based ply of the rated position; zero is the starting position. """
-
         self.rating: Rating = rating
         """ The engine evaluation of this position. """
-
-        self.description: RatingDescription | None = description
-        """ A short explanation of the rating, when one is available. """
-
-        self.move: str | None = move
-        """ The UCI move that produced this position, or ``None`` for the starting position. """
 
     @classmethod
     def from_dict(cls,
@@ -85,16 +56,12 @@ class GameRatingAnnotation(edq.util.serial.DictConverter):
             engine: RatingEngine,
             depth: int,
             annotations: list[MoveRatingAnnotation] | None = None,
-            score_perspective: RatingPerspective = RatingPerspective.WHITE,
-            schema_version: str = chessai.__version__,
+            score_perspective: chessai.core.types.Color = chessai.core.types.Color.WHITE,
             ) -> None:
         if (depth < 1):
             raise ValueError('The analysis depth must be at least one.')
 
-        self.schema_version: str = schema_version
-        """ The version of this annotation's JSON schema. """
-
-        self.score_perspective: RatingPerspective = score_perspective
+        self.score_perspective: chessai.core.types.Color = score_perspective
         """ The player for whom a positive evaluation is favorable. """
 
         self.engine: RatingEngine = engine

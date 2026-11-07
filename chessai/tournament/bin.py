@@ -25,6 +25,7 @@ import chessai.core.game
 import chessai.core.isolation.level
 import chessai.core.log
 import chessai.core.ui
+import chessai.util.reflection
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
@@ -147,7 +148,16 @@ def _get_teams(args: argparse.Namespace) -> list[chessai.core.agentinfo.AgentInf
         teams += _collect_teams(args.submissions_dir, set(args.ignore_team))
 
     for team in args.include_team:
-        teams.append(chessai.core.agentinfo.AgentInfo(name = team))
+        agent_info = chessai.core.agentinfo.AgentInfo(name = team)
+        file_path = agent_info.name.file_path
+        if (file_path is not None):
+            short_path = os.path.basename(os.path.dirname(file_path))
+            if (short_path != ''):
+                file_path = short_path
+
+        agent_info.display_name = chessai.util.reflection.Reference.build_string(agent_info.name.short_name, file_path, agent_info.name.module_name)
+
+        teams.append(agent_info)
 
     if (len(teams) < 2):
         raise ValueError(f"At least two teams are required to run a tournament, got {len(teams)}")

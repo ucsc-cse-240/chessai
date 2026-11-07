@@ -30,13 +30,20 @@ class Agent(abc.ABC):
     def __init__(self,
             name: chessai.util.reflection.Reference | str = chessai.util.alias.AGENT_RANDOM.long,
             state_eval_func: chessai.core.gamestate.AgentStateEvaluationFunction | chessai.util.reflection.Reference | str =
-                    chessai.core.agentinfo.DEFAULT_STATE_EVAL) -> None:
+                    chessai.core.agentinfo.DEFAULT_STATE_EVAL,
+            display_name: str = '') -> None:
         self.name: chessai.util.reflection.Reference = chessai.util.reflection.Reference(name)
         """ The name of the agent. """
 
         clean_state_eval_func = chessai.util.reflection.resolve_and_fetch(chessai.core.gamestate.AgentStateEvaluationFunction, state_eval_func)
         self.evaluation_function: chessai.core.gamestate.AgentStateEvaluationFunction = clean_state_eval_func
         """ The evaluation function that agent will use to assess game states. """
+
+        if (display_name == ''):
+            display_name = str(name)
+
+        self.display_name: str = display_name
+        """ The display name of the agent. """
 
         self.rng: random.Random = random.Random(4)
         """
