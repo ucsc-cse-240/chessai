@@ -71,7 +71,7 @@ AGENT_PICK_FIRST: Alias = Alias('agent-pick-first', 'chessai.agents.pickfirst.Pi
 AGENT_RANDOM: Alias = Alias('agent-random', 'chessai.agents.random.RandomAgent')
 AGENT_REFLEX: Alias = Alias('agent-reflex', 'chessai.student.multiagents.ReflexAgent')
 AGENT_SCRIPTED: Alias = Alias('agent-scripted', 'chessai.agents.scripted.ScriptedAgent')
-AGENT_SPARRING: Alias = Alias('agent-sparring', 'chessai.agents.sparring.SparringAgent')
+AGENT_POSITIONAL: Alias = Alias('agent-positional', 'chessai.agents.positional.PositionalAgent')
 AGENT_SEARCH_KING_ESCORT: Alias = Alias('agent-search-king-escort', 'chessai.student.singlesearch.KingEscortSearchAgent')
 AGENT_SEARCH_PROBLEM: Alias = Alias('agent-search-problem', 'chessai.agents.searchproblem.SearchProblemAgent')
 AGENT_TIMEOUT: Alias = Alias('agent-timeout', 'chessai.agents.testing.TimeoutAgent')
@@ -89,7 +89,7 @@ AGENT_SHORT_NAMES: list[str] = [
     AGENT_RANDOM.short,
     AGENT_REFLEX.short,
     AGENT_SCRIPTED.short,
-    AGENT_SPARRING.short,
+    AGENT_POSITIONAL.short,
     AGENT_SEARCH_KING_ESCORT.short,
     AGENT_SEARCH_PROBLEM.short,
     AGENT_TIMEOUT.short,
@@ -158,10 +158,12 @@ SEARCH_SOLVER_SHORT_NAMES: list[str] = [
 
 STATE_EVAL_BASE: Alias = Alias('state-eval-base', 'chessai.chess.gamestate.base_eval')
 STATE_EVAL_MINIMAX_BETTER: Alias = Alias('state-eval-minimax-better', 'chessai.student.multiagents.better_state_eval')
+STATE_EVAL_POSITIONAL: Alias = Alias('state-eval-positional', 'chessai.agents.positional.positional_state_eval')
 
 STATE_EVAL_SHORT_NAMES: list[str] = [
     STATE_EVAL_BASE.short,
     STATE_EVAL_MINIMAX_BETTER.short,
+    STATE_EVAL_POSITIONAL.short,
 ]
 
 UI_NULL: Alias = Alias('null', 'chessai.ui.null.NullUI')

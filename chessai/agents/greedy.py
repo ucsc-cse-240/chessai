@@ -9,17 +9,9 @@ class GreedyAgent(chessai.core.agent.Agent):
     """
 
     def get_action(self, state: chessai.core.gamestate.GameState) -> chessai.core.action.Action:
-        legal_actions = state.get_legal_actions()
-        if (len(legal_actions) == 1):
-            return legal_actions[0]
-
-        # Don't consider forfeiting unless we can do nothing else.
-        if (chessai.core.action.ForfeitAction() in legal_actions):
-            legal_actions.remove(chessai.core.action.ForfeitAction())
-
-        # Don't consider proposing a draw unless we can do nothing else.
-        if (chessai.core.action.ProposeDrawAction() in legal_actions):
-            legal_actions.remove(chessai.core.action.ProposeDrawAction())
+        legal_actions = state.get_legal_move_actions()
+        if (len(legal_actions) == 0):
+            legal_actions = state.get_legal_actions()
 
         successors = [(state.generate_successor(action, self.rng), action) for action in legal_actions]
         scores = [(self.evaluate_state(successor, action = action), action) for (successor, action) in successors]
