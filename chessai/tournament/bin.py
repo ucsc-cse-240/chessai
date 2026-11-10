@@ -1,5 +1,5 @@
 """
-Run a round-robin tournament between staff and student agents.
+Run a round-robin tournament between supplied agents.
 The results of each match will be output as TSV.
 """
 
@@ -25,11 +25,11 @@ import chessai.core.game
 import chessai.core.isolation.level
 import chessai.core.log
 import chessai.core.ui
+import chessai.util.alias
 import chessai.util.reflection
 
 THIS_DIR: str = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ROOT_DIR: str = os.path.abspath(os.path.join(THIS_DIR, '..', '..'))
-SPECIAL_TEAMS_DIR: str = os.path.join(ROOT_DIR, 'special_teams')
 SUBMISSIONS_DIR: str = os.path.join(ROOT_DIR, '_submissions')
 
 AGENT_FILENAME: str = 'tournament.py'
@@ -138,24 +138,19 @@ def _collect_teams(directory: str, excluded_names: set[str]) -> list[chessai.cor
     return teams
 
 def _get_teams(args: argparse.Namespace) -> list[chessai.core.agentinfo.AgentInfo]:
-    """ Discover staff and student teams and reject ambiguous team names. """
+    """ Discover submitted and built-in teams. """
 
-    teams = []
-    if (os.path.isdir(args.staff_dir)):
-        teams += _collect_teams(args.staff_dir, set(args.ignore_team))
-
-    if (os.path.isdir(args.submissions_dir)):
-        teams += _collect_teams(args.submissions_dir, set(args.ignore_team))
+    teams: list[chessai.core.agentinfo.AgentInfo] = []
+    excluded_names = set(args.ignore_team)
+    for agent_dir in args.agent_dirs:
+        if (os.path.isdir(agent_dir)):
+            teams += _collect_teams(agent_dir, excluded_names)
 
     for team in args.include_team:
         agent_info = chessai.core.agentinfo.AgentInfo(name = team)
-        file_path = agent_info.name.file_path
-        if (file_path is not None):
-            short_path = os.path.basename(os.path.dirname(file_path))
-            if (short_path != ''):
-                file_path = short_path
-
-        agent_info.display_name = chessai.util.reflection.Reference.build_string(agent_info.name.short_name, file_path, agent_info.name.module_name)
+        agent_info.display_name = agent_info.name.short_name
+        if (team in chessai.util.alias.AGENT_SHORT_NAMES):
+            agent_info.display_name = team
 
         teams.append(agent_info)
 
@@ -402,13 +397,9 @@ def _get_parser() -> argparse.ArgumentParser:
         default = chessai.core.isolation.level.Level.PROCESS.value,
         help = 'Agent isolation level (default: %(default)s).')
 
-    parser.add_argument('--staff-dir', '--special-teams-dir', dest = 'staff_dir', type = str,
-        default = SPECIAL_TEAMS_DIR,
-        help = 'Directory containing staff team directories (default: %(default)s).')
-
-    parser.add_argument('--submissions-dir', dest = 'submissions_dir', type = str,
-        default = SUBMISSIONS_DIR,
-        help = 'Directory containing student submission directories (default: %(default)s).')
+    parser.add_argument('--agent-dir', dest = 'agent_dirs', type = str, nargs = '*', metavar = 'DIR',
+        default = [SUBMISSIONS_DIR],
+        help = 'Directories containing agent submission directories (default: %(default)s).')
 
     parser.add_argument('--include-team', action = 'append', default = [], metavar = 'NAME',
         help = 'Include a team by name, overrides --ignore-team (may be used multiple times).')

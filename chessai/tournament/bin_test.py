@@ -54,6 +54,33 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
                         actual_names.append(str(team.name))
 
                     self.assertEqual(expected_references, actual_names)
+                    self.assertEqual(expected_names, [team.display_name for team in teams])
+
+    def test_get_teams(self):
+        """ Agent directories are combined and built-ins have concise labels. """
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first_dir = os.path.join(temp_dir, 'first')
+            second_dir = os.path.join(temp_dir, 'second')
+            submission_dirs = [
+                os.path.join(first_dir, 'first-submission'),
+                os.path.join(second_dir, 'second-submission'),
+            ]
+            for submission_dir in submission_dirs:
+                os.makedirs(submission_dir)
+                with open(os.path.join(submission_dir, chessai.tournament.bin.AGENT_FILENAME), 'w', encoding = 'utf-8'):
+                    pass
+
+            parser = chessai.tournament.bin._get_parser()
+            args = parser.parse_args([
+                '--agent-dir', first_dir, second_dir,
+                '--include-team', 'agent-random',
+                '--include-team', 'chessai.agents.greedy.GreedyAgent',
+            ])
+            teams = chessai.tournament.bin._get_teams(args)
+
+            self.assertEqual(['first-submission', 'second-submission', 'agent-random', 'GreedyAgent'],
+                [team.display_name for team in teams])
 
     def test_schedule_matches(self):
         """ Every unique pairing is scheduled exactly once. """
