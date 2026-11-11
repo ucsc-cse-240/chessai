@@ -79,7 +79,7 @@ class TournamentRunnerTest(edq.testing.unittest.BaseTest):
             ])
             teams = chessai.tournament.bin._get_teams(args)
 
-            self.assertEqual(['first-submission', 'second-submission', 'agent-random', 'GreedyAgent'],
+            self.assertEqual(['first-submission', 'second-submission', 'agent-random', 'chessai.agents.greedy.GreedyAgent'],
                 [team.display_name for team in teams])
 
     def test_schedule_matches(self):

@@ -40,7 +40,7 @@ class Agent(abc.ABC):
         """ The evaluation function that agent will use to assess game states. """
 
         if (display_name == ''):
-            display_name = str(name)
+            display_name = str(self.name)
 
         self.display_name: str = display_name
         """ The display name of the agent. """

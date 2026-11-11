@@ -147,11 +147,7 @@ def _get_teams(args: argparse.Namespace) -> list[chessai.core.agentinfo.AgentInf
             teams += _collect_teams(agent_dir, excluded_names)
 
     for team in args.include_team:
-        agent_info = chessai.core.agentinfo.AgentInfo(name = team)
-        agent_info.display_name = agent_info.name.short_name
-        if (team in chessai.util.alias.AGENT_SHORT_NAMES):
-            agent_info.display_name = team
-
+        agent_info = chessai.core.agentinfo.AgentInfo(name = team, display_name = team)
         teams.append(agent_info)
 
     if (len(teams) < 2):
@@ -183,6 +179,8 @@ def _match_args(match: Match, args: argparse.Namespace, save_path: str | None, r
         '--agent-start-timeout', str(args.agent_start_timeout),
         '--agent-end-timeout', str(args.agent_end_timeout),
         '--agent-action-timeout', str(args.agent_action_timeout),
+        '--agent-arg', f"white::display_name={match.white.display_name}",
+        '--agent-arg', f"black::display_name={match.black.display_name}",
         '--isolation', args.isolation_level,
         '--ui', args.ui,
         '--results-path', results_path,
