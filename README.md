@@ -79,6 +79,14 @@ Note that puzzles do not have to end in a mate, they will end once the agent fin
 A great place to find puzzles is through [Lichess' Puzzles](https://lichess.org/training/themes),
 which are sorted by theme.
 You can also download a large number of puzzles from [Lichess' download link](https://database.lichess.org/#puzzles).
+For a complete list of valid puzzle themes,
+see the [PuzzleTheme.xml](https://github.com/lichess-org/lila/blob/0d57c7f6/translation/source/puzzleTheme.xml) file in the official Lila repository.
+
+Using a Lichess puzzle database file, use the following command with the path to the file:
+```sh
+./scripts/filter_puzzles.py <INPUT_CSV> --output puzzles --theme queenEndgame --limit 100
+```
+Use the `--help` flag for more information.
 
 #### Creating a Custom Puzzle
 
