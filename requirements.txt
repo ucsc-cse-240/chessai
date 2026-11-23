@@ -1,3 +1,2 @@
 Pillow>=8.3.2
-CairoSVG>=2.5.2
 edq-utils>=1.0.2,==1.*

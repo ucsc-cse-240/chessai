@@ -1,10 +1,8 @@
 import abc
 import argparse
-import io
 import os
 import typing
 
-import cairosvg  # type: ignore[import-untyped]
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFont
@@ -81,7 +79,7 @@ class UI(abc.ABC):
         """ The board dimensions represented by the cached base image. """
 
         self._sprites: dict[str, PIL.Image.Image] = {}
-        """ Rasterized piece sprites keyed by their symbol. """
+        """ Piece sprites keyed by their symbol. """
 
         self._label_font = PIL.ImageFont.load_default()
         """ The available fonts for labels. """
@@ -178,7 +176,7 @@ class UI(abc.ABC):
         return image
 
     def _get_sprite(self, piece: chessai.core.piece.Piece) -> PIL.Image.Image:
-        """ Get the rasterized SVG sprite for a piece. """
+        """ Get the bundled PNG sprite for a piece. """
 
         symbol = piece.symbol()
         if (symbol in self._sprites):
@@ -189,12 +187,12 @@ class UI(abc.ABC):
         else:
             color = 'black'
 
-        name = f"{type(piece).__name__.lower()}_{color}.svg"
+        name = f"{type(piece).__name__.lower()}_{color}.png"
         path = os.path.join(SPRITES_DIR, name)
 
         if (os.path.isfile(path)):
-            png_data = cairosvg.svg2png(url = path, output_width = SQUARE_SIZE, output_height = SQUARE_SIZE)
-            sprite = PIL.Image.open(io.BytesIO(png_data)).convert('RGBA')
+            with PIL.Image.open(path) as image:
+                sprite = image.convert('RGBA')
         else:
             sprite = self._make_default_sprite(piece)
 
