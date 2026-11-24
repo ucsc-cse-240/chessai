@@ -35,7 +35,7 @@ class PositionalAgent(chessai.agents.greedy.GreedyAgent):
 
         super().__init__(name, state_eval_func, display_name)
 
-        self.heat_map: dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, int]] = {}
+        self.heat_map: dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, float]] = {}
         """ Positional values, optionally specialized by piece type. """
 
     def game_start(self,
@@ -50,17 +50,17 @@ class PositionalAgent(chessai.agents.greedy.GreedyAgent):
     def get_square_score(self,
             piece: chessai.core.piece.Piece,
             coordinate: chessai.core.coordinate.Coordinate,
-            ) -> int:
+            ) -> float:
         """ Return a piece's positional value, using its type-specific map when available. """
 
         return self._get_heat_map_score(self.heat_map, piece, coordinate)
 
     @staticmethod
     def _get_heat_map_score(
-            heat_map: dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, int]],
+            heat_map: dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, float]],
             piece: chessai.core.piece.Piece,
             coordinate: chessai.core.coordinate.Coordinate,
-            ) -> int:
+            ) -> float:
         """ Return a piece's positional value from a supplied heat map. """
 
         for piece_type in type(piece).mro():
@@ -73,7 +73,7 @@ class PositionalAgent(chessai.agents.greedy.GreedyAgent):
     def _build_heat_map(
             board: chessai.core.board.Board,
             player: chessai.core.types.Color,
-            ) -> dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, int]]:
+            ) -> dict[type[chessai.core.piece.Piece], dict[chessai.core.coordinate.Coordinate, float]]:
         """
         Build the default heat map.
 
@@ -97,13 +97,13 @@ class PositionalAgent(chessai.agents.greedy.GreedyAgent):
                 coordinate = chessai.core.coordinate.Coordinate(file, rank)
                 distance_from_center = abs((2 * file) - (board.num_files - 1))
                 distance_from_center += abs((2 * rank) - (board.num_ranks - 1))
-                central_heat_map[coordinate] = maximum_distance - distance_from_center
-                edge_heat_map[coordinate] = distance_from_center - maximum_distance
-                opposite_heat_map[coordinate] = (board.num_ranks - 1) - abs(final_rank - rank)
+                central_heat_map[coordinate] = float(maximum_distance - distance_from_center)
+                edge_heat_map[coordinate] = float(distance_from_center - maximum_distance)
+                opposite_heat_map[coordinate] = 2.5 * ((board.num_ranks - 1) - abs(final_rank - rank))
 
         return {
             # Default to always scoring the piece as 0.
-            chessai.core.piece.Piece: collections.defaultdict(int),
+            chessai.core.piece.Piece: collections.defaultdict(float),
 
             # Prefer to move the king to the edge of the map.
             chessai.chess.piece.King: edge_heat_map,
