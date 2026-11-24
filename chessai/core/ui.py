@@ -23,11 +23,12 @@ ANIMATION_EXTS: list[str] = ['.gif', '.webp']
 """ The allowed extensions for animation files. """
 
 SQUARE_SIZE: int = 72
-LABEL_SIZE: int = 20
-LIGHT_SQUARE: tuple[int, int, int] = (240, 217, 181)
-DARK_SQUARE: tuple[int, int, int] = (181, 136, 99)
-HIGHLIGHT: tuple[int, int, int] = (246, 246, 105)
-LABEL_COLOR: tuple[int, int, int] = (70, 70, 70)
+LABEL_SIZE: int = 48
+LIGHT_SQUARE: tuple[int, int, int] = (248, 232, 248)
+DARK_SQUARE: tuple[int, int, int] = (183, 131, 212)
+MINOR_HIGHLIGHT: tuple[int, int, int] = (196, 217, 235)
+MAJOR_HIGHLIGHT: tuple[int, int, int] = (97, 115, 178)
+LABEL_COLOR: tuple[int, int, int] = (0, 0, 0)
 THIS_DIR: str = os.path.dirname(os.path.realpath(__file__))
 SPRITES_DIR: str = os.path.join(THIS_DIR, '..', 'resources', 'sprites')
 
@@ -135,8 +136,8 @@ class UI(abc.ABC):
         canvas = PIL.ImageDraw.Draw(image)
         action = state.get_previous_action()
         if (isinstance(action, chessai.core.action.MoveAction)):
-            self._draw_square(canvas, state, action.start_coordinate, HIGHLIGHT)
-            self._draw_square(canvas, state, action.end_coordinate, HIGHLIGHT)
+            self._draw_square(canvas, state, action.start_coordinate, MINOR_HIGHLIGHT)
+            self._draw_square(canvas, state, action.end_coordinate, MAJOR_HIGHLIGHT)
 
         for (coordinate, piece) in state.board.get_coordinate_map().items():
             x, y = self._coordinate_to_pixels(state, coordinate)

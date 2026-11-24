@@ -39,12 +39,12 @@ class NoneIsolator(chessai.core.isolation.isolator.AgentIsolator):
         results = {}
         for (team, agent) in self._agents.items():
             data = {
-                'player': initial_state.turn,
+                'player': team,
                 'suggested_seed': rng.randint(0, 2**64),
                 'initial_state': initial_state,
             }
 
-            results[team] = _call_agent_method(initial_state.turn, agent.game_start_full, data)
+            results[team] = _call_agent_method(team, agent.game_start_full, data)
 
         return results
 

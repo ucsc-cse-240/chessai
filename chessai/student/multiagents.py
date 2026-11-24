@@ -98,4 +98,4 @@ def better_state_eval(
     """
 
     # *** Your Code Here ***
-    return chessai.chess.gamestate.base_eval(state, agent, kwargs)
+    return chessai.chess.gamestate.base_eval(state, action = action, agent = agent, **kwargs)

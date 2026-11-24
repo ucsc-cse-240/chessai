@@ -872,4 +872,8 @@ class AgentStateEvaluationFunction(typing.Protocol):
         The current state is the only required argument, the others are optional.
         Passing the agent asking for this evaluation is a simple way to pass persistent state
         (like pre-computed heuristics) from the agent to this function.
+
+        Scores are from the requesting agent's perspective.
+        Positive values favor that agent and negative values favor its opponent.
+        When no agent is supplied, scores are from the side-to-move's perspective.
         """
