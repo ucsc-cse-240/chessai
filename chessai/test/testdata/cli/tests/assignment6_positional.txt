@@ -9,8 +9,8 @@
     ]
 }
 ---
-<LOG_PREFIX> -- Average Score: 0.85
-<LOG_PREFIX> -- Scores:        1.0, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5
-<LOG_PREFIX> -- Record:        Win, Tie, Win, Win, Win, Win, Win, Win, Tie, Tie
-<LOG_PREFIX> -- Average Moves: 72.3
-<LOG_PREFIX> -- Move Counts:   59, 100, 97, 81, 25, 65, 39, 57, 100, 100
+<LOG_PREFIX> -- Average Score: 0.95
+<LOG_PREFIX> -- Scores:        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0
+<LOG_PREFIX> -- Record:        Win, Win, Win, Win, Win, Win, Win, Tie, Win, Win
+<LOG_PREFIX> -- Average Moves: 57.0
+<LOG_PREFIX> -- Move Counts:   65, 87, 61, 39, 71, 63, 31, 77, 33, 43

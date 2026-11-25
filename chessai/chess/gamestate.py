@@ -4,6 +4,7 @@ import edq.util.serial
 
 import chessai.chess.piece
 import chessai.core.action
+import chessai.core.agent
 import chessai.core.gamestate
 
 class GameState(chessai.core.gamestate.GameState):
@@ -601,6 +602,10 @@ def base_eval(
         **kwargs: typing.Any) -> float:
     """
     The most basic evaluation function, which just uses the difference in piece value on the board.
+
+    Scores are from the requesting agent's perspective.
+    Positive values favor that agent and negative values favor its opponent.
+    When no agent is supplied, scores are from the side-to-move's perspective.
     """
 
     piece_values: dict[type[chessai.core.piece.Piece], int] = {
@@ -612,7 +617,7 @@ def base_eval(
         chessai.chess.piece.King: 9999,
     }
 
-    # The difference in pieces from white's perspective.
+    # The difference in pieces from White's perspective.
     board_value = 0
     for piece in state.board.all_pieces():
         piece_value = piece_values.get(type(piece), 0)
@@ -621,8 +626,12 @@ def base_eval(
         else:
             board_value -= piece_value
 
-    if (state.turn == chessai.core.types.Color.WHITE):
+    player = state.turn
+    if isinstance(agent, chessai.core.agent.Agent) and (agent.player is not None):
+        player = agent.player
+
+    if (player == chessai.core.types.Color.WHITE):
         return board_value
 
-    # The piece difference is the opposite for black.
+    # Black's perspective is the inverse of White's.
     return -1 * board_value

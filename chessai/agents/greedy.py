@@ -6,6 +6,9 @@ class GreedyAgent(chessai.core.agent.Agent):
     """
     An agent that greedily takes the available move with the best score at the time.
     If multiple moves have the same score, this agent will just randomly choose between them.
+
+    Evaluation functions must return scores from this agent's perspective,
+    so this agent can always maximize them for either color.
     """
 
     def get_action(self, state: chessai.core.gamestate.GameState) -> chessai.core.action.Action:
