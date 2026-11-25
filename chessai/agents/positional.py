@@ -53,7 +53,7 @@ class PositionalAgent(chessai.agents.greedy.GreedyAgent):
             ) -> float:
         """ Return a piece's positional value, using its type-specific map when available. """
 
-        return self._get_heat_map_score(self.heat_map, piece, coordinate)
+        return self._get_heat_map_score(self.heat_map, piece, coordinate) + self.rng.uniform(-0.1, 0.1)
 
     @staticmethod
     def _get_heat_map_score(
